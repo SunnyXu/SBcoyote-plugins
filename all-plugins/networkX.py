@@ -2,7 +2,7 @@
 Given a random network, this plugin  will rearrange the network neatly on the screen.
 Version 0.01: Author: Carmen Perena Cortes, Herbert M Sauro 2020
 Based on THOMAS M. J. FRUCHTERMAN AND EDWARD M. REINGOLD's Graph Drawing by Force-directed Placement
-SOFTWARE—PRACTICE AND EXPERIENCE, VOL. 21(1 1), 1129-1164 (NOVEMBER 1991)
+SOFTWARE - PRACTICE AND EXPERIENCE, VOL. 21(1 1), 1129-1164 (NOVEMBER 1991)
 Using python's networkx
 '''
 # pylint: disable=maybe-no-member
@@ -56,7 +56,7 @@ class LayoutNetworkX(WindowedPlugin):
         self.kText = wx.TextCtrl(self.window, -1, "70", size=(100, -1))
         self.kText.SetInsertionPoint(0)
         self.kText.Bind(wx.EVT_TEXT, self.OnText_k)
-        self.kValue = float(self.kText.GetValue())        
+        self.kValue = float(self.kText.GetValue())
 
         self.AddField('k (float > 0)', self.kText)
 
@@ -111,9 +111,9 @@ class LayoutNetworkX(WindowedPlugin):
            wx.MessageBox('Value must be a number', 'Error', wx.OK | wx.ICON_INFORMATION)
 
     def OnCheckUseCentroid(self, evt):
-        cb = evt.GetEventObject() 
+        cb = evt.GetEventObject()
         self.useCentroid = cb.GetValue()
-           
+
     def Apply(self, evt):
         if api.node_count(0) == 0:
             return
@@ -135,7 +135,7 @@ class LayoutNetworkX(WindowedPlugin):
             G.add_nodes_from(nodesId)
             '''
             for n in nodes:
-                centroidsTo = np.array(list(api.get_reactions_as_product(0, n))) # Gets the reactions in which it is a product -> TO 
+                centroidsTo = np.array(list(api.get_reactions_as_product(0, n))) # Gets the reactions in which it is a product -> TO
                 cStr = np.empty_like(centroidsTo, dtype=str)
                 cStr[:,] = "c"
                 centroidsToIn = np.char.add(cStr, centroidsTo.astype(str)) # centroids from which the node is product
@@ -166,7 +166,7 @@ class LayoutNetworkX(WindowedPlugin):
                     edges.append(('n' + str(s), 'c' + str(reaction.index)))
                 for t in reaction.targets:
                     edges.append(('c' + str(reaction.index), 'n' + str(t)))
-                        
+
             G.add_edges_from(edges)
             cn = 0
             for rea in api.get_reactions(0):
@@ -174,7 +174,7 @@ class LayoutNetworkX(WindowedPlugin):
                 #originalPos[centroidId[cn]] = list([cent.x, cent.y])
                 originalPos['c' + str(rea)] = list([random.randint(0,600), random.randint(0,600)])
                 cn = cn + 1
-            
+
             for nod in api.get_nodes(0):
                 #originalPos[nodesId[cn]] = list([nod.position.x, nod.position.y])
                 # random.randint(0,500), nod.position.y+random.randint (0,500)])
@@ -183,7 +183,7 @@ class LayoutNetworkX(WindowedPlugin):
         generateGraph()
         #print(nx.to_dict_of_lists(G))
         #nodeIds = list (api.get_node_indices(0))
-        with api.group_action():   
+        with api.group_action():
             for t in range(1):
                 pos = (nx.fruchterman_reingold_layout(G, k = self.kValue, iterations = self.MaxIterValue, scale = self.scaleValue, pos = originalPos, weight=1))
                 positions = np.array(list(pos.values()))
@@ -201,9 +201,9 @@ class LayoutNetworkX(WindowedPlugin):
                 for n in nodes:
                     newX = float(n[0])
                     newY = float(n[1])
-                    api.move_node(0, nodesInd[count], position = Vec2(newX, newY), allowNegativeCoordinates=True)   
+                    api.move_node(0, nodesInd[count], position = Vec2(newX, newY), allowNegativeCoordinates=True)
                     count = count + 1
-                
+
                 if self.useCentroid:
                     count = 0
                     for c in centroids:
@@ -211,7 +211,7 @@ class LayoutNetworkX(WindowedPlugin):
                         newY = float(c[1])
                         r = api.get_reaction_by_index(0, reactionsInd[count])
                         handles = api.default_handle_positions(0, r.index)
-                        api.update_reaction(0, r.index, center_pos=Vec2(newX, newY), handle_positions=handles)  
+                        api.update_reaction(0, r.index, center_pos=Vec2(newX, newY), handle_positions=handles)
                         count = count + 1
                 else:
                     for index in api.get_reaction_indices(0):
@@ -220,7 +220,7 @@ class LayoutNetworkX(WindowedPlugin):
                         api.update_reaction(0, index, handle_positions=handles)
 
                 '''
-                
+
                 for r in api.get_reactions(0):
                     currCentroid = centroids[r.index]
                     newX = float(currCentroid[0])
@@ -236,7 +236,7 @@ class LayoutNetworkX(WindowedPlugin):
                     for t in r.targets:
                         api.set_reaction_node_handle(0, r.index, t, False, handles[count])
                         count += 1
-                
+
                 '''
 
             ws = api.window_size()
