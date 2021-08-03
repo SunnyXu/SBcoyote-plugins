@@ -1,6 +1,6 @@
 """
 Duplicates all selected reactions as well as their reactant and product nodes.
-If no reactions are selected, duplicates all reactions
+If no reactions are selected, duplicates all reactions.
 
 Version 0.01: Author: Claire Samuels (2021)
 
