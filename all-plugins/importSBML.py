@@ -1,6 +1,6 @@
 """
 Import an SBML string from a file and visualize it to a network on canvas.
-Version 0.03: Author: Jin Xu (2021)
+Version 0.02: Author: Jin Xu (2021)
 """
 
 
@@ -23,7 +23,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.0.3',
+        version='0.1.4',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -39,13 +39,13 @@ class IMPORTSBML(WindowedPlugin):
         """
         self.window = wx.Panel(dialog, pos=(5,100), size=(300, 320))
         self.sbmlStr = ''
-        show_btn = wx.Button(self.window, -1, 'Show', (5, 5))
+        show_btn = wx.Button(self.window, -1, 'Load', (5, 5))
         show_btn.Bind(wx.EVT_BUTTON, self.Show)
 
-        copy_btn = wx.Button(self.window, -1, 'Copy', (100, 5))
+        copy_btn = wx.Button(self.window, -1, 'Copy To Clipboard', (83, 5))
         copy_btn.Bind(wx.EVT_BUTTON, self.Copy)
 
-        visualize_btn = wx.Button(self.window, -1, 'Visualize', (195, 5))
+        visualize_btn = wx.Button(self.window, -1, 'Visualize', (205, 5))
         visualize_btn.Bind(wx.EVT_BUTTON, self.Visualize)
 
         wx.StaticText(self.window, -1, 'SBML string:', (5,30))
@@ -306,43 +306,6 @@ class IMPORTSBML(WindowedPlugin):
             numNodes = numFloatingNodes + numBoundaryNodes
 
 
-            for i in range(numComps):
-                temp_id = Comps_ids[i]
-                vol= model.getCompartmentVolume(i)
-                if temp_id == "_compartment_default_":
-                    api.add_compartment(net_index, id=temp_id, volume = vol,
-                    size=Vec2(3900,2400), position=Vec2(10,10),
-                    fill_color = api.Color(255,255,255),
-                    border_color = api.Color(255,255,255),
-                    border_width = comp_border_width)
-                else:
-                    if len(comp_id_list) != 0:
-                    #if mplugin is not None:                    
-                        #for j in range(numComps):
-                        for j in range(numCompGlyphs):
-                            if comp_id_list[j] == temp_id:
-                                dimension = comp_dimension_list[j]
-                                position = comp_position_list[j]
-
-                    else:# no layout info about compartment,
-                        # then the whole size of the canvas is the compartment size
-                        # modify the compartment size using the max_rec function above
-                        # random assigned network:
-                        # dimension = [800,800]
-                        # position = [40,40]
-                        # the whole size of the compartment: 4000*2500
-                        dimension = [3900,2400]
-                        position = [10,10]
-                        comp_fill_color = (255, 255, 255)
-                        comp_border_color = (255, 255, 255)
-
-                    api.add_compartment(net_index, id=temp_id, volume = vol,
-                    size=Vec2(dimension[0],dimension[1]),position=Vec2(position[0],position[1]),
-                    fill_color = api.Color(comp_fill_color[0],comp_fill_color[1],comp_fill_color[2]),
-                    border_color = api.Color(comp_border_color[0],comp_border_color[1],comp_border_color[2]),
-                    border_width = comp_border_width)
-
-
             comp_node_list = [0]*numComps
             #comp_node_list = [0]*numCompGlyphs
             for i in range(numComps):
@@ -351,6 +314,42 @@ class IMPORTSBML(WindowedPlugin):
 
             #if there is layout info:
             if len(spec_id_list) != 0:
+                for i in range(numComps):
+                    temp_id = Comps_ids[i]
+                    vol= model.getCompartmentVolume(i)
+                    if temp_id == "_compartment_default_":
+                        api.add_compartment(net_index, id=temp_id, volume = vol,
+                        size=Vec2(3900,2400), position=Vec2(10,10),
+                        fill_color = api.Color(255,255,255),
+                        border_color = api.Color(255,255,255),
+                        border_width = comp_border_width)
+                    else:
+                        if len(comp_id_list) != 0:
+                        #if mplugin is not None:                    
+                            #for j in range(numComps):
+                            for j in range(numCompGlyphs):
+                                if comp_id_list[j] == temp_id:
+                                    dimension = comp_dimension_list[j]
+                                    position = comp_position_list[j]
+
+                        else:# no layout info about compartment,
+                            # then the whole size of the canvas is the compartment size
+                            # modify the compartment size using the max_rec function above
+                            # random assigned network:
+                            # dimension = [800,800]
+                            # position = [40,40]
+                            # the whole size of the compartment: 4000*2500
+                            dimension = [3900,2400]
+                            position = [10,10]
+                            comp_fill_color = (255, 255, 255)
+                            comp_border_color = (255, 255, 255)
+
+                        api.add_compartment(net_index, id=temp_id, volume = vol,
+                        size=Vec2(dimension[0],dimension[1]),position=Vec2(position[0],position[1]),
+                        fill_color = api.Color(comp_fill_color[0],comp_fill_color[1],comp_fill_color[2]),
+                        border_color = api.Color(comp_border_color[0],comp_border_color[1],comp_border_color[2]),
+                        border_width = comp_border_width)
+
                 id_list = []
                 nodeIdx_list = [] #get_nodes idx do not follow the same order of add_node
                 nodeIdx_specGlyph_list = []
@@ -417,7 +416,10 @@ class IMPORTSBML(WindowedPlugin):
                         if temp_id == '_compartment_default_':
                             node_list_default = [item for item in range(numNodes)]
                             for j in range(len(node_list_default)):
-                                api.set_compartment_of_node(net_index=net_index, node_index=node_list_default[j], comp_index=i) 
+                                try:
+                                    api.set_compartment_of_node(net_index=net_index, node_index=node_list_default[j], comp_index=i) 
+                                except:
+                                    pass # Orphan nodes are removed
                         #for j in range(numComps):
                         for j in range(numCompGlyphs):
                             if comp_id_list[j] == temp_id:
@@ -425,7 +427,6 @@ class IMPORTSBML(WindowedPlugin):
                             else:
                                 node_list_temp = []
                             for k in range(len(node_list_temp)):
-                                #print(node_list_temp)
                                 api.set_compartment_of_node(net_index=net_index, node_index=node_list_temp[k], comp_index=i)
                 else:
                     for i in range(len(nodeIdx_list)):
@@ -466,6 +467,18 @@ class IMPORTSBML(WindowedPlugin):
             else: # there is no layout information, assign position randomly and size as default
                 comp_id_list = Comps_ids
 
+                for i in range(numComps):
+                    temp_id = Comps_ids[i]
+                    vol= model.getCompartmentVolume(i)
+                    dimension = [3900,2400]
+                    position = [10,10]
+
+                    api.add_compartment(net_index, id=temp_id, volume = vol,
+                    size=Vec2(dimension[0],dimension[1]),position=Vec2(position[0],position[1]),
+                    fill_color = api.Color(comp_fill_color[0],comp_fill_color[1],comp_fill_color[2]),
+                    border_color = api.Color(comp_border_color[0],comp_border_color[1],comp_border_color[2]),
+                    border_width = comp_border_width)
+
                 for i in range (numFloatingNodes):
                     temp_id = FloatingNodes_ids[i]
                     comp_id = model.getCompartmentIdSpeciesIsIn(temp_id)
@@ -504,6 +517,9 @@ class IMPORTSBML(WindowedPlugin):
                 numNodes = api.node_count(net_index)
                 allNodes = api.get_nodes(net_index)
 
+
+                flag_add_rxn_err = 0
+                dummy_node_id_index = 0
                 for i in range (numRxns):
                     src = []
                     dst = []
@@ -524,13 +540,61 @@ class IMPORTSBML(WindowedPlugin):
                         prd_id = model.getProduct(temp_id,j)
                         for k in range(numNodes):
                             if allNodes[k].id == prd_id:
-                                dst.append(allNodes[k].index)
+                                dst.append(allNodes[k].index)                   
 
-                    api.add_reaction(net_index, id=temp_id, reactants=src, products=dst, rate_law = kinetics,
-                    fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
-                    line_thickness=reaction_line_width)
+                    try: 
+                        src_corr = []
+                        [src_corr.append(x) for x in src if x not in src_corr]
 
-                    #set the information for handle positions, center positions and use bezier as default
+                        dst_corr = []
+                        [dst_corr.append(x) for x in dst if x not in dst_corr]
 
+                        if len(src_corr) == 0:
+                            temp_node_id = "dummy" + str(dummy_node_id_index)                   
+                            comp_node_id = allNodes[dst_corr[0]].id 
+                            # assume the dummy node is in the same compartment as the first src/dst node
+                            comp_id = model.getCompartmentIdSpeciesIsIn(comp_node_id)
+                            nodeIdx_temp = api.add_node(net_index, id=temp_node_id, size=Vec2(60,40), floating_node = True,
+                            position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
+                            fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
+                            border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
+                            border_width=spec_border_width, shape_index=shapeIdx)
+                            
+                            src_corr.append(nodeIdx_temp)
+                            dummy_node_id_index += 1
+
+                            for i in range(numComps):
+                                if comp_id == Comps_ids[i]:
+                                    api.set_compartment_of_node(net_index=net_index, node_index=nodeIdx_temp, comp_index=i)
+                        
+                        if len(dst_corr) == 0:
+                            temp_node_id = "dummy" + str(dummy_node_id_index)                   
+                            comp_node_id = allNodes[src_corr[0]].id
+                            comp_id = model.getCompartmentIdSpeciesIsIn(comp_node_id)
+                            nodeIdx_temp = api.add_node(net_index, id=temp_node_id, size=Vec2(60,40), floating_node = True,
+                            position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
+                            fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
+                            border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
+                            border_width=spec_border_width, shape_index=shapeIdx)
+                            
+                            dst_corr.append(nodeIdx_temp)
+                            dummy_node_id_index += 1
+
+                            for i in range(numComps):
+                                if comp_id == Comps_ids[i]:
+                                    api.set_compartment_of_node(net_index=net_index, node_index=nodeIdx_temp, comp_index=i)
+    
+                        api.add_reaction(net_index, id=temp_id, reactants=src_corr, products=dst_corr, rate_law = kinetics,
+                        fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
+                        line_thickness=reaction_line_width)
+                        #set the information for handle positions, center positions and use bezier as default
+                    
+                    except:
+                        flag_add_rxn_err = 1
+
+
+                if flag_add_rxn_err == 1:
+                    wx.MessageBox("There are errors while loading this SBML file!", "Message", wx.OK | wx.ICON_INFORMATION)
+                
 
 
