@@ -8,6 +8,7 @@ Version 0.02: Author: Jin Xu (2021)
 
 from inspect import Parameter
 import wx
+from wx.core import Width
 from rkviewer.plugin.classes import PluginMetadata, WindowedPlugin, PluginCategory
 from rkviewer.plugin import api
 from rkviewer.plugin.api import Node, Vec2, Reaction, Color, get_node_by_index
@@ -18,7 +19,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.1.3',
+        version='0.3.3',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -288,7 +289,10 @@ class ExportSBML(WindowedPlugin):
                 for i in range(numNodes):   
                     spec_id = allNodes[i].id
                     spec_index = allNodes[i].index
-                    spec_shapeIdx = allNodes[i].shape_index
+                    # spec_shapeIdx = allNodes[i].shape_index
+                    primitive, _ = allNodes[i].shape.text_item
+                    alignment_value = primitive.alignment.value
+                    position_value = primitive.position.value
                     speciesGlyph = layout.createSpeciesGlyph()
                     specG_id = "SpecG_"  + spec_id + '_idx_' + str(spec_index)
                     speciesGlyph.setId(specG_id)
@@ -304,12 +308,22 @@ class ExportSBML(WindowedPlugin):
                     textG_id = "TextG_" + spec_id + '_idx_' + str(spec_index)
                     textGlyph.setId(textG_id)
                     bb_id  = "bb_spec_text_" + spec_id + '_idx_' + str(spec_index)
-                    if spec_shapeIdx == 6: #rough by eyes
-                        pos_x_text = pos_x + 50
-                        pos_y_text = pos_y + 30
-                    else:
-                        pos_x_text = pos_x
-                        pos_y_text = pos_y
+                    # if spec_shapeIdx == 6: #rough by eyes
+                    #     pos_x_text = pos_x + 50
+                    #     pos_y_text = pos_y + 30
+                    # else:
+                    pos_x_text = pos_x
+                    pos_y_text = pos_y
+                    #rough position, if text is outside the node
+                    if position_value != 1: #not inside the node
+                        if alignment_value == 1: #LEFT
+                            pos_x_text = pos_x - width 
+                        if alignment_value == 3: #RIGHT
+                            pos_x_text = pos_x + width                           
+                    if position_value == 2: #ABOVE
+                        pos_y_text = pos_y - height
+                    if position_value == 3: #BELOW
+                        pos_y_text = pos_y + height 
                     textGlyph.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x_text, pos_y_text, width, height))
                     textGlyph.setOriginOfTextId(specG_id)
                     textGlyph.setGraphicalObjectId(specG_id)
@@ -329,7 +343,10 @@ class ExportSBML(WindowedPlugin):
                 for i in range(numNodes):
                     spec_id = allNodes[i].id
                     spec_index = allNodes[i].index
-                    spec_shapeIdx = allNodes[i].shape_index
+                    #spec_shapeIdx = allNodes[i].shape_index
+                    primitive, _ = allNodes[i].shape.text_item
+                    alignment_value = primitive.alignment.value
+                    position_value = primitive.position.value
                     speciesGlyph = layout.createSpeciesGlyph()
                     specG_id = "SpecG_"  + spec_id + '_idx_' + str(spec_index)
                     speciesGlyph.setId(specG_id)
@@ -344,12 +361,22 @@ class ExportSBML(WindowedPlugin):
                     textGlyph = layout.createTextGlyph()
                     textG_id = "TextG_" + spec_id + '_idx_' + str(spec_index)
                     textGlyph.setId(textG_id)
-                    if spec_shapeIdx == 6: #rough by eyes
-                        pos_x_text = pos_x + 50
-                        pos_y_text = pos_y + 30
-                    else:
-                        pos_x_text = pos_x
-                        pos_y_text = pos_y
+                    # if spec_shapeIdx == 6: #rough by eyes
+                    #     pos_x_text = pos_x + 50
+                    #     pos_y_text = pos_y + 30
+                    # else:
+                    pos_x_text = pos_x
+                    pos_y_text = pos_y
+                    #rough position, if text is outside the node
+                    if position_value != 1: #not inside the node
+                        if alignment_value == 1: #LEFT
+                            pos_x_text = pos_x - width 
+                        if alignment_value == 3: #RIGHT
+                            pos_x_text = pos_x + width                           
+                    if position_value == 2: #ABOVE
+                        pos_y_text = pos_y - height
+                    if position_value == 3: #BELOW
+                        pos_y_text = pos_y + height
                     bb_id  = "bb_spec_text_" + spec_id + '_idx_' + str(spec_index)
                     textGlyph.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x_text, pos_y_text, width, height))
                     textGlyph.setOriginOfTextId(specG_id)
@@ -547,7 +574,7 @@ class ExportSBML(WindowedPlugin):
                 node =  allNodes[i]
                 #print(node.shape)
                 try: 
-                    primitive, transform = node.shape.items[0]
+                    primitive, _ = node.shape.items[0]
                     spec_fill_color   = primitive.fill_color
                     spec_border_color = primitive.border_color
                     spec_fill_color_str   = '#%02x%02x%02x' % (spec_fill_color.r,spec_fill_color.g,spec_fill_color.b)

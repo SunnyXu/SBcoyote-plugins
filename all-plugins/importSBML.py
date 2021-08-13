@@ -10,6 +10,8 @@ from ast import Num
 from inspect import Parameter
 from re import S
 import wx
+from wx.core import CENTER
+from rkviewer.canvas.data import TEXT_POSITION_CHOICES, TextAlignment, TextPosition
 from rkviewer.plugin.classes import PluginMetadata, WindowedPlugin, PluginCategory
 from rkviewer.plugin import api
 from rkviewer.plugin.api import Node, Vec2, Reaction, Color
@@ -23,7 +25,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.2.5',
+        version='0.3.5',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -130,6 +132,8 @@ class IMPORTSBML(WindowedPlugin):
             spec_specGlyph_id_list = []
             spec_dimension_list = []
             spec_position_list = []
+            spec_text_alignment_list = []
+            spec_text_position_list = []
 
             shapeIdx = 0
 
@@ -164,7 +168,6 @@ class IMPORTSBML(WindowedPlugin):
                     numCompGlyphs = layout.getNumCompartmentGlyphs()
                     numSpecGlyphs = layout.getNumSpeciesGlyphs()
                     numReactionGlyphs = layout.getNumReactionGlyphs()
-                    flag_text_out = 0
 
                     for i in range(numCompGlyphs):
                         compGlyph = layout.getCompartmentGlyph(i)
@@ -207,24 +210,42 @@ class IMPORTSBML(WindowedPlugin):
                         rct_specGlyph_temp_list = []
                         prd_specGlyph_temp_list = []
 
+
                         for j in range(numSpecRefGlyphs):
+                            alignment_name = TextAlignment.CENTER
+                            position_name = TextPosition.IN_NODE
                             specRefGlyph = reactionGlyph.getSpeciesReferenceGlyph(j)
                             #specRefGlyph_id = specRefGlyph.getSpeciesReferenceGlyphId()
                             role = specRefGlyph.getRoleString()
                             specGlyph_id = specRefGlyph.getSpeciesGlyphId()
                             specGlyph = layout.getSpeciesGlyph(specGlyph_id)
-                            #textGlyph = layout.getTextGlyph(textGlyph_id)
+                            
+                            for k in range(numSpecGlyphs):
+                                textGlyph_temp = layout.getTextGlyph(k)
+                                temp_specGlyph_id = textGlyph_temp.getOriginOfTextId()
+                                if temp_specGlyph_id == specGlyph_id:
+                                    textGlyph = textGlyph_temp
+
                             spec_id = specGlyph.getSpeciesId()
                             spec_boundingbox = specGlyph.getBoundingBox()
-                            #text_boundingbox = textGlyph.getBoundingBox()
+                            text_boundingbox = textGlyph.getBoundingBox()
                             height = spec_boundingbox.getHeight()
                             width = spec_boundingbox.getWidth()
                             pos_x = spec_boundingbox.getX()
                             pos_y = spec_boundingbox.getY()
-                            #text_pos_x = text_boundingbox.getX()
-                            #text_pos_y = text_boundingbox.getY()
-                            #if (pos_x,pos_y) !=(text_pos_x,text_pos_y):
-                            #    flag_text_out = 1
+                            text_pos_x = text_boundingbox.getX()
+                            text_pos_y = text_boundingbox.getY()
+
+                            if text_pos_x < pos_x:
+                                alignment_name = TextAlignment.LEFT
+                            if text_pos_x > pos_x:
+                                alignment_name = TextAlignment.RIGHT  
+                            if text_pos_y < pos_y:
+                                position_name = TextPosition.ABOVE
+                            if text_pos_y > pos_y:
+                                position_name = TextPosition.BELOW
+                            if text_pos_y == pos_y and text_pos_x != pos_x:
+                                position_name = TextPosition.NEXT_TO    
 
                             if specGlyph_id not in specGlyph_id_list:
                                 spec_id_list.append(spec_id)
@@ -232,6 +253,8 @@ class IMPORTSBML(WindowedPlugin):
                                 spec_specGlyph_id_list.append([spec_id,specGlyph_id])
                                 spec_dimension_list.append([width,height])
                                 spec_position_list.append([pos_x,pos_y])
+                                spec_text_alignment_list.append(alignment_name)
+                                spec_text_position_list.append(position_name)
 
                             if role == "substrate": #it is a rct
                                 rct_specGlyph_temp_list.append(specGlyph_id)
@@ -371,6 +394,8 @@ class IMPORTSBML(WindowedPlugin):
                     tempGlyph_id = spec_specGlyph_id_list[i][1]
                     dimension = spec_dimension_list[i]
                     position = spec_position_list[i]
+                    text_alignment = spec_text_alignment_list[i]
+                    text_position = spec_text_position_list[i]
                     comp_id = model.getCompartmentIdSpeciesIsIn(temp_id)
                     for j in range(numFloatingNodes):
                         if temp_id == FloatingNodes_ids[j]:
@@ -380,6 +405,8 @@ class IMPORTSBML(WindowedPlugin):
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                                 border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
                                 border_width=spec_border_width, shape_index=shapeIdx)
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
                                 nodeIdx_list.append(nodeIdx_temp)
                                 nodeIdx_specGlyph_list.append([nodeIdx_temp,tempGlyph_id])
@@ -387,6 +414,8 @@ class IMPORTSBML(WindowedPlugin):
                                 index = id_list.index(temp_id)
                                 nodeIdx_temp = api.add_alias(net_index, original_index=index,
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]) )
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
                                 nodeIdx_list.append(nodeIdx_temp)
                                 nodeIdx_specGlyph_alias_list.append([nodeIdx_temp,tempGlyph_id])
@@ -402,6 +431,8 @@ class IMPORTSBML(WindowedPlugin):
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                                 border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
                                 border_width=spec_border_width, shape_index=shapeIdx)
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
                                 nodeIdx_list.append(nodeIdx_temp)
                                 nodeIdx_specGlyph_list.append([nodeIdx_temp,tempGlyph_id])
@@ -409,6 +440,8 @@ class IMPORTSBML(WindowedPlugin):
                                 index = id_list.index(temp_id)
                                 nodeIdx_temp = api.add_alias(net_index, original_index=index,
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]))
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
+                                api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
                                 nodeIdx_list.append(nodeIdx_temp)
                                 nodeIdx_specGlyph_alias_list.append([nodeIdx_temp,tempGlyph_id])
@@ -505,7 +538,7 @@ class IMPORTSBML(WindowedPlugin):
                     position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
                     fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                     border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                    border_width=spec_border_width, shape_index=shapeIdx )
+                    border_width=spec_border_width, shape_index=shapeIdx)
                     for j in range(numComps):
                         if comp_id == comp_id_list[j]:
                             comp_node_list[j].append(nodeIdx_temp)
