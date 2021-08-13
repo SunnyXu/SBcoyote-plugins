@@ -23,7 +23,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.1.4',
+        version='0.2.5',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -59,6 +59,7 @@ class IMPORTSBML(WindowedPlugin):
         Handler for the "Import" button.
         Open the SBML file and show it in the TextCtrl box.
         """
+
         self.dirname=""  #set directory name to blank
         dlg = wx.FileDialog(self.window, "Choose a file to open", self.dirname, wildcard="SBML files (*.xml)|*.xml", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) #open the dialog boxto open file
         if dlg.ShowModal() == wx.ID_OK:  #if positive button selected....
@@ -88,8 +89,12 @@ class IMPORTSBML(WindowedPlugin):
         """
         Handler for the "Visualize" button.
         Visualize the SBML string to a network shown on the canvas.
-        """
-        self.DisplayModel(self.sbmlStr, True, False)
+        """  
+
+        with wx.BusyCursor():
+        #with wx.BusyInfo("Please wait, working..."):
+            self.DisplayModel(self.sbmlStr, True, False)
+
 
     def DisplayModel(self, sbmlStr, showDialogues, useSeed):
         """
@@ -110,10 +115,11 @@ class IMPORTSBML(WindowedPlugin):
             value = value.lstrip('#')
             return tuple(int(value[i:i+2], 16) for i in (0, 2, 4))
 
-        if len(sbmlStr) == 0:
-          if showDialogues:
-            wx.MessageBox("Please import an SBML file.", "Message", wx.OK | wx.ICON_INFORMATION)
-        else:
+        # if len(sbmlStr) == 0:
+        #   if showDialogues:
+        #     wx.MessageBox("Please import an SBML file.", "Message", wx.OK | wx.ICON_INFORMATION)
+        # else:
+        if len(sbmlStr) != 0:
             net_index = 0
             api.clear_network(net_index)
             comp_id_list = []
@@ -142,19 +148,19 @@ class IMPORTSBML(WindowedPlugin):
             model_layout = document.getModel()
             mplugin = (model_layout.getPlugin("layout"))
 
-            if mplugin is None:
-              if showDialogues:
-                wx.MessageBox("There is no layout information, so positions are randomly assigned.", "Message", wx.OK | wx.ICON_INFORMATION)
-
-            #
             # Get the first Layout object via LayoutModelPlugin object.
             #
-            else:
+            # if mplugin is None:
+            #     if showDialogues:
+            #         wx.MessageBox("There is no layout information, so positions are randomly assigned.", "Message", wx.OK | wx.ICON_INFORMATION)
+            # else:
+            if mplugin is not None:
                 layout = mplugin.getLayout(0)
-                if layout is None:
-                    if showDialogues:
-                        wx.MessageBox("There is no layout information, so positions are randomly assigned.", "Message", wx.OK | wx.ICON_INFORMATION)
-                else:
+                # if layout is None:
+                #     if showDialogues:
+                #         wx.MessageBox("There is no layout information, so positions are randomly assigned.", "Message", wx.OK | wx.ICON_INFORMATION)
+                # else:
+                if layout is not None:
                     numCompGlyphs = layout.getNumCompartmentGlyphs()
                     numSpecGlyphs = layout.getNumSpeciesGlyphs()
                     numReactionGlyphs = layout.getNumReactionGlyphs()
@@ -312,6 +318,7 @@ class IMPORTSBML(WindowedPlugin):
             #for i in range(numCompGlyphs):
                 comp_node_list[i] = []
 
+
             #if there is layout info:
             if len(spec_id_list) != 0:
                 for i in range(numComps):
@@ -356,9 +363,9 @@ class IMPORTSBML(WindowedPlugin):
                 nodeIdx_specGlyph_alias_list = []
                 numSpec_in_reaction = len(spec_specGlyph_id_list)
                 #numSpecGlyphs is larger than numSpec_in_reaction if there orphan nodes
-                if numSpecGlyphs > numSpec_in_reaction:
-                  if showDialogues:
-                    wx.MessageBox("Orphan nodes are removed.", "Message", wx.OK | wx.ICON_INFORMATION)
+                # if numSpecGlyphs > numSpec_in_reaction:
+                #   if showDialogues:
+                #     wx.MessageBox("Orphan nodes are removed.", "Message", wx.OK | wx.ICON_INFORMATION)
                 for i in range (numSpec_in_reaction):
                     temp_id = spec_specGlyph_id_list[i][0]
                     tempGlyph_id = spec_specGlyph_id_list[i][1]
@@ -593,8 +600,11 @@ class IMPORTSBML(WindowedPlugin):
                         flag_add_rxn_err = 1
 
 
-                if flag_add_rxn_err == 1:
-                    wx.MessageBox("There are errors while loading this SBML file!", "Message", wx.OK | wx.ICON_INFORMATION)
+                # if flag_add_rxn_err == 1:
+                #     wx.MessageBox("There are errors while loading this SBML file!", "Message", wx.OK | wx.ICON_INFORMATION)
                 
+
+
+          
 
 
