@@ -25,7 +25,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.3.5',
+        version='0.3.6',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -270,6 +270,9 @@ class IMPORTSBML(WindowedPlugin):
                         #wx.MessageBox("The diversity of each graphical object is not shown.", "Message", wx.OK | wx.ICON_INFORMATION)
                         info = rPlugin.getRenderInformation(0)
                         color_list = []
+                        comp_render = []
+                        spec_render = []
+                        rxn_render = []
                         for  j in range ( 0, info.getNumColorDefinitions()):
                             color = info.getColorDefinition(j)
                             color_list.append([color.getId(),color.createValueString()])
@@ -278,6 +281,7 @@ class IMPORTSBML(WindowedPlugin):
                             style = info.getStyle(j)
                             group = style.getGroup()
                             typeList = style.createTypeString()
+                            idList = style.createIdString()
                             if 'COMPARTMENTGLYPH' in typeList:
                                 for k in range(len(color_list)):
                                     if color_list[k][0] == group.getFill():
@@ -285,6 +289,7 @@ class IMPORTSBML(WindowedPlugin):
                                     if color_list[k][0] == group.getStroke():
                                         comp_border_color = hex_to_rgb(color_list[k][1])
                                 comp_border_width = group.getStrokeWidth()
+                                comp_render.append([idList,comp_fill_color,comp_border_color,comp_border_width])
                             elif 'SPECIESGLYPH' in typeList:
                                 for k in range(len(color_list)):
                                     if color_list[k][0] == group.getFill():
@@ -314,13 +319,15 @@ class IMPORTSBML(WindowedPlugin):
                                 #    shapeIdx = 6
                                 else: # name == "rectangle"/demo combo/others as default (rectangle)
                                     shapeIdx = 0
+                                spec_render.append([idList,spec_fill_color,spec_border_color,spec_border_width,shapeIdx])
 
                             elif 'REACTIONGLYPH' in typeList:
                                 for k in range(len(color_list)):
                                     if color_list[k][0] == group.getStroke():
                                         reaction_line_color = hex_to_rgb(color_list[k][1])
                                 reaction_line_width = group.getStrokeWidth()
-
+                                rxn_render.append([idList, reaction_line_color,reaction_line_width])
+                        
 
             model = simplesbml.loadSBMLStr(sbmlStr)
 
@@ -335,10 +342,8 @@ class IMPORTSBML(WindowedPlugin):
             numNodes = numFloatingNodes + numBoundaryNodes
 
 
-            comp_node_list = [0]*numComps
-            #comp_node_list = [0]*numCompGlyphs
+            comp_node_list = [0]*numComps #Note: numComps is different from numCompGlyphs
             for i in range(numComps):
-            #for i in range(numCompGlyphs):
                 comp_node_list[i] = []
 
 
@@ -356,11 +361,15 @@ class IMPORTSBML(WindowedPlugin):
                     else:
                         if len(comp_id_list) != 0:
                         #if mplugin is not None:                    
-                            #for j in range(numComps):
                             for j in range(numCompGlyphs):
                                 if comp_id_list[j] == temp_id:
                                     dimension = comp_dimension_list[j]
                                     position = comp_position_list[j]
+                            for j in range(len(comp_render)):
+                                if temp_id == comp_render[j][0]:
+                                    comp_fill_color = comp_render[j][1]
+                                    comp_border_color = comp_render[j][2]
+                                    comp_border_width = comp_render[j][3]
 
                         else:# no layout info about compartment,
                             # then the whole size of the canvas is the compartment size
@@ -400,6 +409,12 @@ class IMPORTSBML(WindowedPlugin):
                     for j in range(numFloatingNodes):
                         if temp_id == FloatingNodes_ids[j]:
                             if temp_id not in id_list:
+                                for k in range(len(spec_render)):
+                                    if temp_id == spec_render[k][0]:
+                                        spec_fill_color = spec_render[k][1]
+                                        spec_border_color = spec_render[k][2]
+                                        spec_border_width = spec_render[k][3]
+                                        shapeIdx = spec_render[k][4]
                                 nodeIdx_temp = api.add_node(net_index, id=temp_id, floating_node = True,
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]),
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
@@ -419,13 +434,18 @@ class IMPORTSBML(WindowedPlugin):
                                 id_list.append(temp_id)
                                 nodeIdx_list.append(nodeIdx_temp)
                                 nodeIdx_specGlyph_alias_list.append([nodeIdx_temp,tempGlyph_id])
-                            #for k in range(numComps):
                             for k in range(numCompGlyphs):
                                 if len(comp_id_list) !=0 and comp_id == comp_id_list[k]:
                                     comp_node_list[k].append(nodeIdx_temp)
                     for j in range(numBoundaryNodes):
                         if temp_id == BoundaryNodes_ids[j]:
                             if temp_id not in id_list:
+                                for k in range(len(spec_render)):
+                                    if temp_id == spec_render[k][0]:
+                                        spec_fill_color = spec_render[k][1]
+                                        spec_border_color = spec_render[k][2]
+                                        spec_border_width = spec_render[k][3]
+                                        shapeIdx = spec_render[k][4]
                                 nodeIdx_temp = api.add_node(net_index, id=temp_id, floating_node = False,
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]),
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
@@ -445,7 +465,6 @@ class IMPORTSBML(WindowedPlugin):
                                 id_list.append(temp_id)
                                 nodeIdx_list.append(nodeIdx_temp)
                                 nodeIdx_specGlyph_alias_list.append([nodeIdx_temp,tempGlyph_id])
-                            #for k in range(numComps):
                             for k in range(numCompGlyphs):
                                 if len(comp_id) != 0 and comp_id == comp_id_list[k]:
                                     comp_node_list[k].append(nodeIdx_temp)
@@ -453,14 +472,14 @@ class IMPORTSBML(WindowedPlugin):
                 if len(comp_id_list) != 0:
                     for i in range(numComps):
                         temp_id = Comps_ids[i]
-                        if temp_id == '_compartment_default_':
-                            node_list_default = [item for item in range(numNodes)]
+                        if temp_id == '_compartment_default_': 
+                            #numNodes is different from len(nodeIdx_list) because of alias node
+                            node_list_default = [item for item in range(len(nodeIdx_list))]
                             for j in range(len(node_list_default)):
                                 try:
                                     api.set_compartment_of_node(net_index=net_index, node_index=node_list_default[j], comp_index=i) 
                                 except:
                                     pass # Orphan nodes are removed
-                        #for j in range(numComps):
                         for j in range(numCompGlyphs):
                             if comp_id_list[j] == temp_id:
                                 node_list_temp = comp_node_list[j]
@@ -499,6 +518,10 @@ class IMPORTSBML(WindowedPlugin):
                                 prd_idx = nodeIdx_specGlyph_whole_list[k][0]
                         dst.append(prd_idx)
 
+                    for j in range(len(rxn_render)):
+                        if temp_id == rxn_render[j][0]:
+                            reaction_line_color = rxn_render[j][1]
+                            reaction_line_width = rxn_render[j][2]
                     api.add_reaction(net_index, id=temp_id, reactants=src, products=dst, rate_law = kinetics,
                     fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
                     line_thickness=reaction_line_width)

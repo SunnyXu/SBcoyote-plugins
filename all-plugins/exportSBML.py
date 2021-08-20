@@ -19,7 +19,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.3.3',
+        version='0.3.4',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -260,19 +260,6 @@ class ExportSBML(WindowedPlugin):
 
             #create the CompartmentGlyph and SpeciesGlyphs
             if numCompartments != 0:
-                # if "_compartment_default_" not in comp_id_list:
-                #     comp_id= "_compartment_default_"
-                #     compartmentGlyph = layout.createCompartmentGlyph()
-                #     compG_id = "CompG_" + comp_id
-                #     compartmentGlyph.setId(compG_id)
-                #     compartmentGlyph.setCompartmentId(comp_id)
-                #     bb_id  = "bb_" + comp_id
-                #     pos_x  = 10
-                #     pos_y  = 10
-                #     width  = 3900
-                #     height = 2400
-                #     compartmentGlyph.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x, pos_y, width, height))
-                
                 for i in range(numCompartments):   
                     comp_id=allcompartments[i].id
                     if comp_id != "_compartment_default_":
@@ -423,7 +410,6 @@ class ExportSBML(WindowedPlugin):
 
                     speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                     cb = speciesReferenceCurve.createCubicBezier()
-                    #cb = speciesReferenceCurve.createLineSegment()
 
                     cb.setStart(Point(layoutns, centroid.x, centroid.y))
 
@@ -452,7 +438,6 @@ class ExportSBML(WindowedPlugin):
 
                     speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                     cb = speciesReferenceCurve.createCubicBezier()
-                    #cb = speciesReferenceCurve.createLineSegment()
                     cb.setStart(Point(layoutns, centroid.x, centroid.y))
 
                     handles = api.default_handle_positions(netIn, allReactions[i].index)
@@ -467,8 +452,7 @@ class ExportSBML(WindowedPlugin):
                     height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
                     cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
 
-            sbmlStr_layout = writeSBMLToString(document) #sbmlStr is w/o layout info
-            #self.SBMLText.SetValue(sbmlStr_layout) 
+            sbmlStr_layout = writeSBMLToString(document) #sbmlStr is w/o layout info 
 
             doc = readSBMLFromString(sbmlStr_layout)
             model_layout = doc.getModel()
@@ -501,8 +485,8 @@ class ExportSBML(WindowedPlugin):
 
             if numCompartments != 0:  
                 for i in range(len(allcompartments)):
-                    temp_id = allcompartments[i].id
-                    if temp_id != '_compartment_default':
+                    comp_id = allcompartments[i].id
+                    if comp_id != '_compartment_default':
                         fill_color        = allcompartments[i].fill_color
                         border_color      = allcompartments[i].border_color
                         comp_border_width = allcompartments[i].border_width
@@ -510,45 +494,26 @@ class ExportSBML(WindowedPlugin):
                         border_color_str  = '#%02x%02x%02x' % (border_color.r,border_color.g,border_color.b)
                     
 
-                        # color = rInfo.createColorDefinition()
-                        # color.setId("comp_fill_color" + str(i))
-                        # color.setColorValue(fill_color_str)
+                        color = rInfo.createColorDefinition()
+                        color.setId("comp_fill_color" + "_" + comp_id)
+                        color.setColorValue(fill_color_str)
 
-                        # color = rInfo.createColorDefinition()
-                        # color.setId("comp_border_color" + str(i))
-                        # color.setColorValue(border_color_str)
+                        color = rInfo.createColorDefinition()
+                        color.setId("comp_border_color" + "_" + comp_id)
+                        color.setColorValue(border_color_str)
 
-                        # # add a list of styles 
-                        # style = rInfo.createStyle("compStyle" + str(i))
-                        # style.getGroup().setFillColor("comp_fill_color" + str(i))
-                        # style.getGroup().setStroke("comp_border_color" + str (i))
-                        # style.getGroup().setStrokeWidth(comp_border_width)
-                        # style.addType("COMPARTMENTGLYPH")
-                        # rectangle = style.getGroup().createRectangle()
-                        # rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
-
-                color = rInfo.createColorDefinition()
-                color.setId("comp_fill_color")
-                color.setColorValue(fill_color_str)
-
-                color = rInfo.createColorDefinition()
-                color.setId("comp_border_color")
-                color.setColorValue(border_color_str)
-
-                # add a list of styles 
-                style = rInfo.createStyle("compStyle")
-                style.getGroup().setFillColor("comp_fill_color")
-                style.getGroup().setStroke("comp_border_color")
-                style.getGroup().setStrokeWidth(comp_border_width)
-                style.addType("COMPARTMENTGLYPH")
-                rectangle = style.getGroup().createRectangle()
-                rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
-
+                        # add a list of styles 
+                        style = rInfo.createStyle("compStyle" + "_" + comp_id)
+                        style.getGroup().setFillColor("comp_fill_color" + "_" + comp_id)
+                        style.getGroup().setStroke("comp_border_color" + "_" + comp_id)
+                        style.getGroup().setStrokeWidth(comp_border_width)
+                        style.addType("COMPARTMENTGLYPH")
+                        style.addId(comp_id)
+                        rectangle = style.getGroup().createRectangle()
+                        rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
 
             else:
                 comp_border_width = 2.
-                #fill_color_str    = '#9ea9ff'
-                #border_color_str  = '#001dff'
                 #set default compartment with white color
                 fill_color_str = '#ffffff'
                 border_color_str = '#ffffff'
@@ -567,12 +532,13 @@ class ExportSBML(WindowedPlugin):
                 style.getGroup().setStroke("comp_border_color")
                 style.getGroup().setStrokeWidth(comp_border_width)
                 style.addType("COMPARTMENTGLYPH")
+                style.addId(comp_id)
                 rectangle = style.getGroup().createRectangle()
                 rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
     
             for i in range(len(allNodes)):
                 node =  allNodes[i]
-                #print(node.shape)
+                spec_id = node.id
                 try: 
                     primitive, _ = node.shape.items[0]
                     spec_fill_color   = primitive.fill_color
@@ -581,33 +547,29 @@ class ExportSBML(WindowedPlugin):
                     spec_border_color_str = '#%02x%02x%02x' % (spec_border_color.r,spec_border_color.g,spec_border_color.b)
                     spec_border_width = primitive.border_width
                 except:#text-only
-                    #spec_fill_color_str = '#ffcc99'
-                    #spec_border_color_str = '#ff6c09'
                     #set default species/node with white color
                     spec_fill_color_str = '#ffffff'
                     spec_border_color_str = '#ffffff'
-                    #transparent color does not work
-                    #spec_fill_color_str = '#000000'
-                    #spec_border_color_str = '#000000'
                     spec_border_width = 2.
 
                 color = rInfo.createColorDefinition()
-                color.setId("spec_fill_color" + str(i))
+                color.setId("spec_fill_color" + "_" + spec_id)
                 color.setColorValue(spec_fill_color_str)
 
                 color = rInfo.createColorDefinition()
-                color.setId("spec_border_color" + str(i))
+                color.setId("spec_border_color" + "_" + spec_id)
                 color.setColorValue(spec_border_color_str)
 
-                style = rInfo.createStyle("specStyle" + str(i))
-                style.getGroup().setFillColor("spec_fill_color" + str(i))
-                style.getGroup().setStroke("spec_border_color" + str(i))
+                style = rInfo.createStyle("specStyle" + "_" + spec_id)
+                style.getGroup().setFillColor("spec_fill_color" + "_" + spec_id)
+                style.getGroup().setStroke("spec_border_color" + "_" + spec_id)
                 style.getGroup().setStrokeWidth(spec_border_width)
                 style.addType("SPECIESGLYPH")
+                style.addId(spec_id)
                 if node.shape_index == 1 or node.shape_index == 6: #ellipse/text-outside
                     ellipse = style.getGroup().createEllipse()
                     ellipse.setCenter2D(RelAbsVector(0, 50), RelAbsVector(0, 50))
-                    ellipse.setRadii(RelAbsVector(0, 50), RelAbsVector(0, 50))
+                    ellipse.setRadii(RelAbsVector(0, 100), RelAbsVector(0, 100))
                 
                 elif node.shape_index == 2: #hexagon(6)
                     polygon = style.getGroup().createPolygon()
@@ -648,18 +610,21 @@ class ExportSBML(WindowedPlugin):
 
             if numReactions != 0:
                 for i in range(len(allReactions)):
+                    rxn_id = allReactions[i].id
                     reaction_fill_color     = allReactions[i].fill_color
                     reaction_fill_color_str = '#%02x%02x%02x' % (reaction_fill_color.r,reaction_fill_color.g,reaction_fill_color.b)           
                     reaction_line_thickness = allReactions[i].line_thickness
+                    reaction_id = allReactions[i].id
 
                     color = rInfo.createColorDefinition()
-                    color.setId("reaction_fill_color" + str(i))
+                    color.setId("reaction_fill_color" + "_" + rxn_id)
                     color.setColorValue(reaction_fill_color_str)
 
-                    style = rInfo.createStyle("reactionStyle" + str(i))
-                    style.getGroup().setStroke("reaction_fill_color" + str(i))
+                    style = rInfo.createStyle("reactionStyle" + "_" + rxn_id)
+                    style.getGroup().setStroke("reaction_fill_color" + "_" + rxn_id)
                     style.getGroup().setStrokeWidth(reaction_line_thickness)
                     style.addType("REACTIONGLYPH SPECIESREFERENCEGLYPH")
+                    style.addId(reaction_id)
             
             sbmlStr_layout_render = writeSBMLToString(doc)
             self.SBMLText.SetValue(sbmlStr_layout_render) 
