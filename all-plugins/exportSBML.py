@@ -19,7 +19,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.3.4',
+        version='0.3.5',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -63,8 +63,15 @@ class ExportSBML(WindowedPlugin):
         else:
             wx.MessageBox("Unable to open the clipboard", "Error")
 
-
     def Show(self, evt):
+        """
+        Handler for the "Export" button"
+        """
+        sbmlStr_layout_render = self.NetworkToSBML()
+
+        self.SBMLText.SetValue(sbmlStr_layout_render)
+
+    def NetworkToSBML(self):
         """
         Handler for the "Export" button.
         Get the network on canvas and change it to an SBML string.
@@ -135,7 +142,7 @@ class ExportSBML(WindowedPlugin):
                             species.setCompartment(comp_id)  
                         else:
                             species.setCompartment("_compartment_default_") 
-                        species.setInitialConcentration(1.0)	
+                        species.setInitialConcentration(allNodes[i].concentration)	
                         species.setHasOnlySubstanceUnits(False)
                         species.setBoundaryCondition(False)
                         species.setConstant(False)             
@@ -154,7 +161,7 @@ class ExportSBML(WindowedPlugin):
                         species = model.createSpecies()
                         species.setId(spec_id)
                         species.setCompartment(comp_id)
-                        species.setInitialConcentration(1.0)	
+                        species.setInitialConcentration(allNodes[i].concentration)	
                         species.setHasOnlySubstanceUnits(False)
                         species.setBoundaryCondition(False)
                         species.setConstant(False)             
@@ -627,7 +634,8 @@ class ExportSBML(WindowedPlugin):
                     style.addId(reaction_id)
             
             sbmlStr_layout_render = writeSBMLToString(doc)
-            self.SBMLText.SetValue(sbmlStr_layout_render) 
+            #self.SBMLText.SetValue(sbmlStr_layout_render) 
+            return sbmlStr_layout_render
            
     def Save(self, evt):
         """
