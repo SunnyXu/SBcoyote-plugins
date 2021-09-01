@@ -4,7 +4,10 @@ Import a directory of SBML and Antimony files, visualize reactions, capture and 
 Version 0.0.4: Author: Claire Samuels (2021)
 '''
 
-from rkviewer_plugins import importSBML
+try:
+    from rkviewer_plugins import importSBML
+except:
+    import importSBML
 
 import wx
 from rkviewer.plugin.classes import PluginMetadata, WindowedPlugin, PluginCategory
