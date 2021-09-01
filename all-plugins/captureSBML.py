@@ -1,11 +1,11 @@
 '''
 Import a directory of SBML and Antimony files, visualize reactions, capture and save images.
 
-Version 0.0.2: Author: Claire Samuels (2021)
+Version 0.0.4: Author: Claire Samuels (2021)
 '''
 
-
 from rkviewer_plugins import importSBML
+
 import wx
 from rkviewer.plugin.classes import PluginMetadata, WindowedPlugin, PluginCategory
 from rkviewer.plugin import api
@@ -18,7 +18,7 @@ class CaptureSBML(WindowedPlugin):
       metadata = PluginMetadata(
         name='CaptureSBML',
         author='Claire Samuels',
-        version='0.0.3',
+        version='0.0.4',
         short_desc='Visualize and capture SBML or Antimony.',
         long_desc='Import a directory of SBML and Antimony files, visualize reactions, capture and save images.',
         category=PluginCategory.ANALYSIS
@@ -31,15 +31,19 @@ class CaptureSBML(WindowedPlugin):
             dialog
         """
         # requires importSBML version 0.0.3
+        def version_err_window():
+            self.window = wx.Panel(dialog, pos=(5,100), size=(300, 320))
+            txt = wx.StaticText(self.window, -1, "CaptureSBML requires ImportSBML version 0.0.3 or later!", (10,10))
+            txt.Wrap(250)
+            return self.window
+
         v = importSBML.IMPORTSBML.metadata.version.split(".")
-        importSBMLvers = 0
+        min_version = [0,0,3]
         for i in range(3):
-          importSBMLvers += pow(10,i)*int(v[len(v)-1-i])
-        if importSBMLvers < 3:
-          self.window = wx.Panel(dialog, pos=(5,100), size=(300, 320))
-          txt = wx.StaticText(self.window, -1, "CaptureSBML requires ImportSBML version 0.0.3 or later!", (10,10))
-          txt.Wrap(250)
-          return self.window
+            if int(v[i]) < min_version[i]:
+                return version_err_window()
+            elif int(v[i]) > min_version[i]:
+                break
 
         # import button
         self.window = wx.Panel(dialog, pos=(5,100), size=(300, 320))
