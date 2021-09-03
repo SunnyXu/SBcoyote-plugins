@@ -8,6 +8,7 @@ Version 0.02: Author: Jin Xu (2021)
 
 from ast import Num
 from inspect import Parameter
+from ntpath import join
 from re import S
 import wx
 from wx.core import CENTER
@@ -25,7 +26,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.3.6',
+        version='0.3.8',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -194,12 +195,19 @@ class IMPORTSBML(WindowedPlugin):
                     #     spec_position_list.append([pos_x,pos_y])
 
                     reaction_id_list = []
+                    reaction_center_list = []
                     kinetics_list = []
                     rct_specGlyph_list = []
                     prd_specGlyph_list = []
 
                     for i in range(numReactionGlyphs):
                         reactionGlyph = layout.getReactionGlyph(i)
+                        curve = reactionGlyph.getCurve()
+                        listOfCurveSegments = curve.getListOfCurveSegments()
+                        for j in range(len(listOfCurveSegments)):
+                            center_x = curve.getCurveSegment(j).getStart().x()
+                            center_y = curve.getCurveSegment(j).getStart().y()
+                            reaction_center_list.append([center_x, center_y])
                         reaction_id = reactionGlyph.getReactionId()
                         reaction_id_list.append(reaction_id)
                         reaction = model_layout.getReaction(reaction_id)
@@ -216,6 +224,14 @@ class IMPORTSBML(WindowedPlugin):
                             position_name = TextPosition.IN_NODE
                             specRefGlyph = reactionGlyph.getSpeciesReferenceGlyph(j)
                             #specRefGlyph_id = specRefGlyph.getSpeciesReferenceGlyphId()
+
+                            # curve = specRefGlyph.getCurve()
+                            # listOfCurveSegments = curve.getListOfCurveSegments()
+                            # for k in range(len(listOfCurveSegments)):
+                                #print(curve.getCurveSegment(k).getStart().x())
+                                #print(curve.getCurveSegment(k).getEnd().y())
+                                #print(curve.getCurveSegment(k).getBasePoint1) #no children
+                                #print(curve.getCurveSegment(k).getBasePoint2)
                             role = specRefGlyph.getRoleString()
                             specGlyph_id = specRefGlyph.getSpeciesGlyphId()
                             specGlyph = layout.getSpeciesGlyph(specGlyph_id)
@@ -263,6 +279,8 @@ class IMPORTSBML(WindowedPlugin):
 
                         rct_specGlyph_list.append(rct_specGlyph_temp_list)
                         prd_specGlyph_list.append(prd_specGlyph_temp_list)
+
+                    #print(reaction_center_list)
 
 
                     rPlugin = layout.getPlugin("render")
@@ -355,8 +373,8 @@ class IMPORTSBML(WindowedPlugin):
                     if temp_id == "_compartment_default_":
                         api.add_compartment(net_index, id=temp_id, volume = vol,
                         size=Vec2(3900,2400), position=Vec2(10,10),
-                        fill_color = api.Color(255,255,255),
-                        border_color = api.Color(255,255,255),
+                        fill_color = api.Color(255,255,255, 0), #the last digit for transparent
+                        border_color = api.Color(255,255,255, 0),
                         border_width = comp_border_width)
                     else:
                         if len(comp_id_list) != 0:
@@ -380,8 +398,8 @@ class IMPORTSBML(WindowedPlugin):
                             # the whole size of the compartment: 4000*2500
                             dimension = [3900,2400]
                             position = [10,10]
-                            comp_fill_color = (255, 255, 255)
-                            comp_border_color = (255, 255, 255)
+                            comp_fill_color = (255, 255, 255, 0)
+                            comp_border_color = (255, 255, 255, 0)
 
                         api.add_compartment(net_index, id=temp_id, volume = vol,
                         size=Vec2(dimension[0],dimension[1]),position=Vec2(position[0],position[1]),
@@ -500,6 +518,7 @@ class IMPORTSBML(WindowedPlugin):
                     src = []
                     dst = []
                     temp_id = reaction_id_list[i]
+                    center_position = reaction_center_list[i]
                     kinetics = kinetics_list[i]
                     rct_num = len(rct_specGlyph_list[i])
                     prd_num = len(prd_specGlyph_list[i])
@@ -522,10 +541,11 @@ class IMPORTSBML(WindowedPlugin):
                         if temp_id == rxn_render[j][0]:
                             reaction_line_color = rxn_render[j][1]
                             reaction_line_width = rxn_render[j][2]
+                    #print(kinetics)
+                    #print(center_position)
                     api.add_reaction(net_index, id=temp_id, reactants=src, products=dst, rate_law = kinetics,
                     fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
-                    line_thickness=reaction_line_width)
-
+                    line_thickness=reaction_line_width, center_pos = Vec2(center_position[0],center_position[1]))
 
             else: # there is no layout information, assign position randomly and size as default
                 comp_id_list = Comps_ids

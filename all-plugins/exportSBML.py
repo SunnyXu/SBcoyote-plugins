@@ -14,12 +14,13 @@ from rkviewer.plugin import api
 from rkviewer.plugin.api import Node, Vec2, Reaction, Color, get_node_by_index
 import os
 from libsbml import * # does not have to import in the main.py too
+import re # to process kinetic_law string
 
 class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.3.5',
+        version='0.4.8',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -63,19 +64,22 @@ class ExportSBML(WindowedPlugin):
         else:
             wx.MessageBox("Unable to open the clipboard", "Error")
 
+
     def Show(self, evt):
-        """
-        Handler for the "Export" button"
-        """
-        sbmlStr_layout_render = self.NetworkToSBML()
-
-        self.SBMLText.SetValue(sbmlStr_layout_render)
-
-    def NetworkToSBML(self):
         """
         Handler for the "Export" button.
         Get the network on canvas and change it to an SBML string.
         """
+
+        def getSymbols(kinetic_law):
+            str = kinetic_law
+            str = str.replace(' ', '')  
+            list = re.split('[+|\-|*|/|(|)]', str)
+            list = [i for i in list if i != '']
+            res = []
+            [res.append(x) for x in list if x not in res and not x.isdigit()]
+            return res
+
 
         isReversible = True
         netIn = 0
@@ -130,10 +134,13 @@ class ExportSBML(WindowedPlugin):
                     comp_id=allcompartments[i].id
                     compartment.setId(comp_id)
                     compartment.setConstant(True)
+                spec_id_list = []
                 for i in range(numNodes):
                     original_index = allNodes[i].original_index
                     if original_index == -1:
                         spec_id = allNodes[i].id
+                        if spec_id not in spec_id_list:
+                            spec_id_list.append(spec_id)
                         species = model.createSpecies()
                         species.setId(spec_id)
                         comp_idx = allNodes[i].comp_idx
@@ -142,7 +149,7 @@ class ExportSBML(WindowedPlugin):
                             species.setCompartment(comp_id)  
                         else:
                             species.setCompartment("_compartment_default_") 
-                        species.setInitialConcentration(allNodes[i].concentration)	
+                        species.setInitialConcentration(1.0)	
                         species.setHasOnlySubstanceUnits(False)
                         species.setBoundaryCondition(False)
                         species.setConstant(False)             
@@ -154,14 +161,17 @@ class ExportSBML(WindowedPlugin):
                 comp_id="_compartment_default_"
                 compartment.setId(comp_id)
                 compartment.setConstant(True)
+                spec_id_list = []
                 for i in range(numNodes):
                     original_index = allNodes[i].original_index
                     if original_index == -1:
                         spec_id = allNodes[i].id
+                        if spec_id not in spec_id_list:
+                            spec_id_list.append(spec_id)
                         species = model.createSpecies()
                         species.setId(spec_id)
                         species.setCompartment(comp_id)
-                        species.setInitialConcentration(allNodes[i].concentration)	
+                        species.setInitialConcentration(1.0)	
                         species.setHasOnlySubstanceUnits(False)
                         species.setBoundaryCondition(False)
                         species.setConstant(False)             
@@ -180,13 +190,46 @@ class ExportSBML(WindowedPlugin):
                 for j in range(prd_num):
                     prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
 
-                kinetic_law = ''
-                parameter_list = []
-                kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
-                parameter_list.append('E' + str (i))
-                parameter_list.append('k' + str (i))
-                for j in range(rct_num):
-                    kinetic_law = kinetic_law + '*' + rct[j]
+                kinetic_law_from_user = allReactions[i].rate_law
+                
+                if kinetic_law_from_user == '':
+                    kinetic_law = ''
+                    parameter_list = []
+                    kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
+                    parameter_list.append('E' + str (i))
+                    parameter_list.append('k' + str (i))
+                    for j in range(rct_num):
+                        kinetic_law = kinetic_law + '*' + rct[j]
+                        
+                    if isReversible:
+                        kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
+                        parameter_list.append('k' + str (i) + 'r')
+                        for j in range(prd_num):
+                            kinetic_law = kinetic_law + '*' + prd[j]
+                    kinetic_law = kinetic_law + ')'
+                else:
+                    kinetic_law = kinetic_law_from_user
+                    parameter_spec_list = getSymbols(kinetic_law_from_user) 
+                    parameter_list = []
+                    for j in range(len(parameter_spec_list)):
+                        if parameter_spec_list[j] not in spec_id_list:
+                            parameter_list.append(parameter_spec_list[j])
+                    if len(parameter_list) == 0: #If the input kinetic law is invalid
+                        kinetic_law = ''
+                        parameter_list = []
+                        kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
+                        parameter_list.append('E' + str (i))
+                        parameter_list.append('k' + str (i))
+                        for j in range(rct_num):
+                            kinetic_law = kinetic_law + '*' + rct[j]
+                            
+                        if isReversible:
+                            kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
+                            parameter_list.append('k' + str (i) + 'r')
+                            for j in range(prd_num):
+                                kinetic_law = kinetic_law + '*' + prd[j]
+                        kinetic_law = kinetic_law + ')'
+
                     
                 reaction = model.createReaction()
                 reaction.setId(allReactions[i].id)
@@ -194,11 +237,6 @@ class ExportSBML(WindowedPlugin):
                 reaction.setFast(False)
                 if isReversible:
                     reaction.setReversible(True)
-                    kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
-                    parameter_list.append('k' + str (i) + 'r')
-                    for j in range(prd_num):
-                        kinetic_law = kinetic_law + '*' + prd[j]
-                kinetic_law = kinetic_law + ')'
                 for j in range(len(parameter_list)):
                     parameters = model.createParameter()
                     parameters.setId(parameter_list[j])
@@ -379,6 +417,13 @@ class ExportSBML(WindowedPlugin):
             # create the ReactionGlyphs and SpeciesReferenceGlyphs
             for i in range(numReactions):
                 reaction_id = allReactions[i].id
+                center_pos = allReactions[i].center_pos
+                centroid = api.compute_centroid(0, allReactions[i].sources, allReactions[i].targets)
+                try:
+                    center_value = [center_pos.x,center_pos.y]
+                except:
+                    center_value = [centroid.x,centroid.y]
+                
                 reactionGlyph = layout.createReactionGlyph()
                 reactionG_id = "RectionG_" + reaction_id
                 reactionGlyph.setId(reactionG_id)
@@ -386,9 +431,8 @@ class ExportSBML(WindowedPlugin):
                 
                 reactionCurve = reactionGlyph.getCurve()
                 ls = reactionCurve.createLineSegment()
-                centroid = api.compute_centroid(0, allReactions[i].sources, allReactions[i].targets)
-                ls.setStart(Point(layoutns, centroid.x, centroid.y))
-                ls.setEnd(Point(layoutns, centroid.x, centroid.y))
+                ls.setStart(Point(layoutns, center_value[0], center_value[1]))
+                ls.setEnd(Point(layoutns, center_value[0], center_value[1]))
 
                 rct = [] # id list of the rcts
                 prd = []
@@ -418,7 +462,7 @@ class ExportSBML(WindowedPlugin):
                     speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                     cb = speciesReferenceCurve.createCubicBezier()
 
-                    cb.setStart(Point(layoutns, centroid.x, centroid.y))
+                    cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
                     handles = api.default_handle_positions(netIn, allReactions[i].index)
                     pos_x = handles[1+j].x
@@ -445,7 +489,7 @@ class ExportSBML(WindowedPlugin):
 
                     speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                     cb = speciesReferenceCurve.createCubicBezier()
-                    cb.setStart(Point(layoutns, centroid.x, centroid.y))
+                    cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
                     handles = api.default_handle_positions(netIn, allReactions[i].index)
                     pos_x = handles[1+j].x
@@ -522,8 +566,8 @@ class ExportSBML(WindowedPlugin):
             else:
                 comp_border_width = 2.
                 #set default compartment with white color
-                fill_color_str = '#ffffff'
-                border_color_str = '#ffffff'
+                fill_color_str = '#00ffffff'
+                border_color_str = '#00ffffff'
 
                 color = rInfo.createColorDefinition()
                 color.setId("comp_fill_color")
@@ -555,8 +599,10 @@ class ExportSBML(WindowedPlugin):
                     spec_border_width = primitive.border_width
                 except:#text-only
                     #set default species/node with white color
-                    spec_fill_color_str = '#ffffff'
-                    spec_border_color_str = '#ffffff'
+                    #spec_fill_color_str = '#ffffff'
+                    #spec_border_color_str = '#ffffff'
+                    spec_fill_color_str = '#00ffffff'
+                    spec_border_color_str = '#00ffffff'
                     spec_border_width = 2.
 
                 color = rInfo.createColorDefinition()
@@ -634,8 +680,7 @@ class ExportSBML(WindowedPlugin):
                     style.addId(reaction_id)
             
             sbmlStr_layout_render = writeSBMLToString(doc)
-            #self.SBMLText.SetValue(sbmlStr_layout_render) 
-            return sbmlStr_layout_render
+            self.SBMLText.SetValue(sbmlStr_layout_render) 
            
     def Save(self, evt):
         """
