@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.4.8',
+        version='0.4.9',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -68,7 +68,13 @@ class ExportSBML(WindowedPlugin):
     def Show(self, evt):
         """
         Handler for the "Export" button.
-        Get the network on canvas and change it to an SBML string.
+        """
+        sbmlStr_layout_render = self.NetworkToSBML()
+        self.SBMLText.SetValue(sbmlStr_layout_render)
+
+    def NetworkToSBML(self):
+        """
+        Get the network on canvas and change it to an SBML string
         """
 
         def getSymbols(kinetic_law):
@@ -680,8 +686,8 @@ class ExportSBML(WindowedPlugin):
                     style.addId(reaction_id)
             
             sbmlStr_layout_render = writeSBMLToString(doc)
-            self.SBMLText.SetValue(sbmlStr_layout_render) 
-           
+            return sbmlStr_layout_render
+
     def Save(self, evt):
         """
         Handler for the "Save" button.
