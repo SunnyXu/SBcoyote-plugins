@@ -155,7 +155,7 @@ class ExportSBML(WindowedPlugin):
                             species.setCompartment(comp_id)  
                         else:
                             species.setCompartment("_compartment_default_") 
-                        species.setInitialConcentration(1.0)	
+                        species.setInitialConcentration(allNodes[i].concentration)	
                         species.setHasOnlySubstanceUnits(False)
                         species.setBoundaryCondition(False)
                         species.setConstant(False)             
@@ -177,7 +177,7 @@ class ExportSBML(WindowedPlugin):
                         species = model.createSpecies()
                         species.setId(spec_id)
                         species.setCompartment(comp_id)
-                        species.setInitialConcentration(1.0)	
+                        species.setInitialConcentration(allNodes[i].concentration)	
                         species.setHasOnlySubstanceUnits(False)
                         species.setBoundaryCondition(False)
                         species.setConstant(False)             
