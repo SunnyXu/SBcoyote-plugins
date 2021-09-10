@@ -26,12 +26,11 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.3.8',
+        version='0.3.10',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
     )
-
 
     def create_window(self, dialog):
         """
@@ -147,6 +146,8 @@ class IMPORTSBML(WindowedPlugin):
             spec_border_width = 2.0
             reaction_line_color = (129, 123, 255)
             reaction_line_width = 3.0
+            #text_line_color = (0,0,0)
+            #text_line_width = 1.
 
             ### from here for layout ###
             document = readSBMLFromString(sbmlStr)
@@ -244,24 +245,27 @@ class IMPORTSBML(WindowedPlugin):
 
                             spec_id = specGlyph.getSpeciesId()
                             spec_boundingbox = specGlyph.getBoundingBox()
-                            text_boundingbox = textGlyph.getBoundingBox()
                             height = spec_boundingbox.getHeight()
                             width = spec_boundingbox.getWidth()
                             pos_x = spec_boundingbox.getX()
                             pos_y = spec_boundingbox.getY()
-                            text_pos_x = text_boundingbox.getX()
-                            text_pos_y = text_boundingbox.getY()
 
-                            if text_pos_x < pos_x:
-                                alignment_name = TextAlignment.LEFT
-                            if text_pos_x > pos_x:
-                                alignment_name = TextAlignment.RIGHT  
-                            if text_pos_y < pos_y:
-                                position_name = TextPosition.ABOVE
-                            if text_pos_y > pos_y:
-                                position_name = TextPosition.BELOW
-                            if text_pos_y == pos_y and text_pos_x != pos_x:
-                                position_name = TextPosition.NEXT_TO    
+                            try:
+                                text_boundingbox = textGlyph.getBoundingBox()
+                                text_pos_x = text_boundingbox.getX()
+                                text_pos_y = text_boundingbox.getY()
+                                if text_pos_x < pos_x:
+                                    alignment_name = TextAlignment.LEFT
+                                if text_pos_x > pos_x:
+                                    alignment_name = TextAlignment.RIGHT  
+                                if text_pos_y < pos_y:
+                                    position_name = TextPosition.ABOVE
+                                if text_pos_y > pos_y:
+                                    position_name = TextPosition.BELOW
+                                if text_pos_y == pos_y and text_pos_x != pos_x:
+                                    position_name = TextPosition.NEXT_TO 
+                            except:
+                                pass   
 
                             if specGlyph_id not in specGlyph_id_list:
                                 spec_id_list.append(spec_id)
@@ -280,8 +284,6 @@ class IMPORTSBML(WindowedPlugin):
                         rct_specGlyph_list.append(rct_specGlyph_temp_list)
                         prd_specGlyph_list.append(prd_specGlyph_temp_list)
 
-                    #print(reaction_center_list)
-
 
                     rPlugin = layout.getPlugin("render")
                     if (rPlugin != None and rPlugin.getNumLocalRenderInformationObjects() > 0):
@@ -291,6 +293,7 @@ class IMPORTSBML(WindowedPlugin):
                         comp_render = []
                         spec_render = []
                         rxn_render = []
+                        #text_render = []
                         for  j in range ( 0, info.getNumColorDefinitions()):
                             color = info.getColorDefinition(j)
                             color_list.append([color.getId(),color.createValueString()])
@@ -509,8 +512,6 @@ class IMPORTSBML(WindowedPlugin):
                     for i in range(len(nodeIdx_list)):
                         api.set_compartment_of_node(net_index=net_index, node_index=nodeIdx_list[i], comp_index=0)
 
-                #handle_positions, center_pos was set as the default:
-                #can not find a way from libsml to do this so far
 
                 nodeIdx_specGlyph_whole_list = nodeIdx_specGlyph_list + nodeIdx_specGlyph_alias_list
 
@@ -518,7 +519,6 @@ class IMPORTSBML(WindowedPlugin):
                     src = []
                     dst = []
                     temp_id = reaction_id_list[i]
-                    center_position = reaction_center_list[i]
                     kinetics = kinetics_list[i]
                     rct_num = len(rct_specGlyph_list[i])
                     prd_num = len(prd_specGlyph_list[i])
@@ -541,12 +541,24 @@ class IMPORTSBML(WindowedPlugin):
                         if temp_id == rxn_render[j][0]:
                             reaction_line_color = rxn_render[j][1]
                             reaction_line_width = rxn_render[j][2]
-                    #print(kinetics)
-                    #print(center_position)
-                    api.add_reaction(net_index, id=temp_id, reactants=src, products=dst, rate_law = kinetics,
-                    fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
-                    line_thickness=reaction_line_width, center_pos = Vec2(center_position[0],center_position[1]))
 
+                    try:
+                        center_position = reaction_center_list[i]
+                        idx = api.add_reaction(net_index, id=temp_id, reactants=src, products=dst,
+                        fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
+                        line_thickness=reaction_line_width)
+                        api.update_reaction(net_index, idx, ratelaw = kinetics)
+                        #control of center_pos and handles(handles do not work so far)
+                        handles = api.default_handle_positions(net_index, idx)
+                        handles[0]= Vec2(center_position[0],center_position[1])
+                        api.update_reaction(net_index, idx, center_pos = Vec2(center_position[0],center_position[1]), handle_positions=handles)
+
+                    except: #There is no info about the center_pos, so set as default
+                        idx = api.add_reaction(net_index, id=temp_id, reactants=src, products=dst,
+                        fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
+                        line_thickness=reaction_line_width)
+                        api.update_reaction(net_index, idx, ratelaw = kinetics)
+            
             else: # there is no layout information, assign position randomly and size as default
                 comp_id_list = Comps_ids
 
@@ -594,8 +606,6 @@ class IMPORTSBML(WindowedPlugin):
                             node_list_temp = comp_node_list[j]
                         for k in range(len(node_list_temp)):
                             api.set_compartment_of_node(net_index=net_index, node_index=node_list_temp[k], comp_index=i)
-
-                #handle_positions, center_pos was set as the default
 
                 numNodes = api.node_count(net_index)
                 allNodes = api.get_nodes(net_index)
@@ -667,9 +677,12 @@ class IMPORTSBML(WindowedPlugin):
                                 if comp_id == Comps_ids[i]:
                                     api.set_compartment_of_node(net_index=net_index, node_index=nodeIdx_temp, comp_index=i)
     
-                        api.add_reaction(net_index, id=temp_id, reactants=src_corr, products=dst_corr, rate_law = kinetics,
+                        idx = api.add_reaction(net_index, id=temp_id, reactants=src_corr, products=dst_corr,
                         fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
                         line_thickness=reaction_line_width)
+                        api.update_reaction(net_index, idx, ratelaw = kinetics)
+
+
                         #set the information for handle positions, center positions and use bezier as default
                     
                     except:
