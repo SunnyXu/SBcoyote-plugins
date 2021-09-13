@@ -26,7 +26,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.3.10',
+        version='0.5.0',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -134,6 +134,7 @@ class IMPORTSBML(WindowedPlugin):
             spec_position_list = []
             spec_text_alignment_list = []
             spec_text_position_list = []
+            spec_concentration_list = []
 
             shapeIdx = 0
 
@@ -244,6 +245,11 @@ class IMPORTSBML(WindowedPlugin):
                                     textGlyph = textGlyph_temp
 
                             spec_id = specGlyph.getSpeciesId()
+                            spec = model_layout.getSpecies(spec_id)
+                            try:
+                                concentration = spec.getInitialConcentration()
+                            except:
+                                concentration = 1.
                             spec_boundingbox = specGlyph.getBoundingBox()
                             height = spec_boundingbox.getHeight()
                             width = spec_boundingbox.getWidth()
@@ -275,6 +281,7 @@ class IMPORTSBML(WindowedPlugin):
                                 spec_position_list.append([pos_x,pos_y])
                                 spec_text_alignment_list.append(alignment_name)
                                 spec_text_position_list.append(position_name)
+                                spec_concentration_list.append(concentration)
 
                             if role == "substrate": #it is a rct
                                 rct_specGlyph_temp_list.append(specGlyph_id)
@@ -421,6 +428,7 @@ class IMPORTSBML(WindowedPlugin):
                 #     wx.MessageBox("Orphan nodes are removed.", "Message", wx.OK | wx.ICON_INFORMATION)
                 for i in range (numSpec_in_reaction):
                     temp_id = spec_specGlyph_id_list[i][0]
+                    temp_concentration = spec_concentration_list[i]
                     tempGlyph_id = spec_specGlyph_id_list[i][1]
                     dimension = spec_dimension_list[i]
                     position = spec_position_list[i]
@@ -440,7 +448,7 @@ class IMPORTSBML(WindowedPlugin):
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]),
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                                 border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                                border_width=spec_border_width, shape_index=shapeIdx)
+                                border_width=spec_border_width, shape_index=shapeIdx, concentration = temp_concentration)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
@@ -471,7 +479,7 @@ class IMPORTSBML(WindowedPlugin):
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]),
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                                 border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                                border_width=spec_border_width, shape_index=shapeIdx)
+                                border_width=spec_border_width, shape_index=shapeIdx, concentration = temp_concentration)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
@@ -577,11 +585,15 @@ class IMPORTSBML(WindowedPlugin):
                 for i in range (numFloatingNodes):
                     temp_id = FloatingNodes_ids[i]
                     comp_id = model.getCompartmentIdSpeciesIsIn(temp_id)
+                    try:
+                        temp_concentration = model.getSpeciesInitialConcentration(temp_id)
+                    except:
+                        temp_concentration = 1.0
                     nodeIdx_temp = api.add_node(net_index, id=temp_id, size=Vec2(60,40), floating_node = True,
                     position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
                     fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                     border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                    border_width=spec_border_width, shape_index=shapeIdx)
+                    border_width=spec_border_width, shape_index=shapeIdx, concentration=temp_concentration)
                     for j in range(numComps):
                         if comp_id == comp_id_list[j]:
                             comp_node_list[j].append(nodeIdx_temp)
@@ -589,11 +601,15 @@ class IMPORTSBML(WindowedPlugin):
                 for i in range (numBoundaryNodes):
                     temp_id = BoundaryNodes_ids[i]
                     comp_id = model.getCompartmentIdSpeciesIsIn(temp_id)
+                    try:
+                        temp_concentration = model.getSpeciesInitialConcentration(temp_id)
+                    except:
+                        temp_concentration = 1.0
                     nodeIdx_temp = api.add_node(net_index, id=temp_id, size=Vec2(60,40), floating_node = False,
                     position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
                     fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                     border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                    border_width=spec_border_width, shape_index=shapeIdx)
+                    border_width=spec_border_width, shape_index=shapeIdx, concentration=temp_concentration)
                     for j in range(numComps):
                         if comp_id == comp_id_list[j]:
                             comp_node_list[j].append(nodeIdx_temp)
