@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.0',
+        version='0.5.1',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -464,18 +464,16 @@ class ExportSBML(WindowedPlugin):
                     speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
                     speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
                     speciesReferenceGlyph.setRole(SPECIES_ROLE_SUBSTRATE)
-
                     speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                     cb = speciesReferenceCurve.createCubicBezier()
 
                     cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                    handles = api.default_handle_positions(netIn, allReactions[i].index)
-                    pos_x = handles[1+j].x
-                    pos_y = handles[1+j].y
-                    cb.setBasePoint1(Point(layoutns, pos_x, pos_y))
-                    cb.setBasePoint2(Point(layoutns, pos_x, pos_y))
-
+                    handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                    handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                     allReactions[i].sources[j],is_source=True)
+                    cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                    cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                     pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
                     pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
@@ -497,11 +495,11 @@ class ExportSBML(WindowedPlugin):
                     cb = speciesReferenceCurve.createCubicBezier()
                     cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                    handles = api.default_handle_positions(netIn, allReactions[i].index)
-                    pos_x = handles[1+j].x
-                    pos_y = handles[1+j].y
-                    cb.setBasePoint1(Point(layoutns, pos_x, pos_y))
-                    cb.setBasePoint2(Point(layoutns, pos_x, pos_y))
+                    handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                    handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                     allReactions[i].targets[j],is_source=False)
+                    cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                    cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                     pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
                     pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
@@ -538,8 +536,7 @@ class ExportSBML(WindowedPlugin):
             # color = rInfo.createColorDefinition()
             # color.setId("black")
             # color.setColorValue("#000000")
-
-
+            
             if numCompartments != 0:  
                 for i in range(len(allcompartments)):
                     comp_id = allcompartments[i].id
