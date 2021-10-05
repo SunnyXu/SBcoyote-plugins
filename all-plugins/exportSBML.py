@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.4.9',
+        version='0.5.1',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -424,7 +424,7 @@ class ExportSBML(WindowedPlugin):
             for i in range(numReactions):
                 reaction_id = allReactions[i].id
                 center_pos = allReactions[i].center_pos
-                centroid = api.compute_centroid(0, allReactions[i].sources, allReactions[i].targets)
+                centroid = api.compute_centroid(netIn, allReactions[i].sources, allReactions[i].targets)
                 try:
                     center_value = [center_pos.x,center_pos.y]
                 except:
@@ -464,18 +464,16 @@ class ExportSBML(WindowedPlugin):
                     speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
                     speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
                     speciesReferenceGlyph.setRole(SPECIES_ROLE_SUBSTRATE)
-
                     speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                     cb = speciesReferenceCurve.createCubicBezier()
 
                     cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                    handles = api.default_handle_positions(netIn, allReactions[i].index)
-                    pos_x = handles[1+j].x
-                    pos_y = handles[1+j].y
-                    cb.setBasePoint1(Point(layoutns, pos_x, pos_y))
-                    cb.setBasePoint2(Point(layoutns, pos_x, pos_y))
-
+                    handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                    handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                     allReactions[i].sources[j],is_source=True)
+                    cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                    cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                     pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
                     pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
@@ -497,11 +495,11 @@ class ExportSBML(WindowedPlugin):
                     cb = speciesReferenceCurve.createCubicBezier()
                     cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                    handles = api.default_handle_positions(netIn, allReactions[i].index)
-                    pos_x = handles[1+j].x
-                    pos_y = handles[1+j].y
-                    cb.setBasePoint1(Point(layoutns, pos_x, pos_y))
-                    cb.setBasePoint2(Point(layoutns, pos_x, pos_y))
+                    handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                    handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                     allReactions[i].targets[j],is_source=False)
+                    cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                    cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                     pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
                     pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
@@ -535,11 +533,10 @@ class ExportSBML(WindowedPlugin):
             rInfo.setProgramVersion("1.0")
 
             # add some colors
-            color = rInfo.createColorDefinition()
-            color.setId("black")
-            color.setColorValue("#000000")
-
-
+            # color = rInfo.createColorDefinition()
+            # color.setId("black")
+            # color.setColorValue("#000000")
+            
             if numCompartments != 0:  
                 for i in range(len(allcompartments)):
                     comp_id = allcompartments[i].id
@@ -603,6 +600,10 @@ class ExportSBML(WindowedPlugin):
                     spec_fill_color_str   = '#%02x%02x%02x' % (spec_fill_color.r,spec_fill_color.g,spec_fill_color.b)
                     spec_border_color_str = '#%02x%02x%02x' % (spec_border_color.r,spec_border_color.g,spec_border_color.b)
                     spec_border_width = primitive.border_width
+                    primitive, _ = node.shape.text_item
+                    text_font_size = primitive.font_size
+                    font_color = primitive.font_color
+                    text_line_color_str =  '#%02x%02x%02x' % (font_color.r,font_color.g,font_color.b)
                 except:#text-only
                     #set default species/node with white color
                     #spec_fill_color_str = '#ffffff'
@@ -610,6 +611,9 @@ class ExportSBML(WindowedPlugin):
                     spec_fill_color_str = '#00ffffff'
                     spec_border_color_str = '#00ffffff'
                     spec_border_width = 2.
+                    text_font_size = 11
+                    text_line_color_str = '#000000'
+
 
                 color = rInfo.createColorDefinition()
                 color.setId("spec_fill_color" + "_" + spec_id)
@@ -618,6 +622,10 @@ class ExportSBML(WindowedPlugin):
                 color = rInfo.createColorDefinition()
                 color.setId("spec_border_color" + "_" + spec_id)
                 color.setColorValue(spec_border_color_str)
+
+                color = rInfo.createColorDefinition()
+                color.setId("text_line_color" + "_" + spec_id)
+                color.setColorValue(text_line_color_str)
 
                 style = rInfo.createStyle("specStyle" + "_" + spec_id)
                 style.getGroup().setFillColor("spec_fill_color" + "_" + spec_id)
@@ -663,9 +671,11 @@ class ExportSBML(WindowedPlugin):
                     rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
                
                 style = rInfo.createStyle("textStyle")
-                style.getGroup().setStroke("black")
+                style.getGroup().setStroke("text_line_color" + "_" + spec_id)
                 style.getGroup().setStrokeWidth(1.)
+                style.getGroup().setFontSize(RelAbsVector(text_font_size,0))
                 style.addType("TEXTGLYPH")
+                style.addId(spec_id)
 
             if numReactions != 0:
                 for i in range(len(allReactions)):

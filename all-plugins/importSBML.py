@@ -26,12 +26,11 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.3.8',
+        version='0.5.1',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
     )
-
 
     def create_window(self, dialog):
         """
@@ -135,6 +134,7 @@ class IMPORTSBML(WindowedPlugin):
             spec_position_list = []
             spec_text_alignment_list = []
             spec_text_position_list = []
+            spec_concentration_list = []
 
             shapeIdx = 0
 
@@ -147,6 +147,8 @@ class IMPORTSBML(WindowedPlugin):
             spec_border_width = 2.0
             reaction_line_color = (129, 123, 255)
             reaction_line_width = 3.0
+            #text_line_color = (0,0,0)
+            #text_line_width = 1.
 
             ### from here for layout ###
             document = readSBMLFromString(sbmlStr)
@@ -197,16 +199,24 @@ class IMPORTSBML(WindowedPlugin):
                     reaction_id_list = []
                     reaction_center_list = []
                     kinetics_list = []
-                    rct_specGlyph_list = []
-                    prd_specGlyph_list = []
+                    #rct_specGlyph_list = []
+                    #prd_specGlyph_list = []
+                    reaction_center_handle_list = []
+                    rct_specGlyph_handle_list = []
+                    prd_specGlyph_handle_list = []
 
                     for i in range(numReactionGlyphs):
                         reactionGlyph = layout.getReactionGlyph(i)
                         curve = reactionGlyph.getCurve()
-                        listOfCurveSegments = curve.getListOfCurveSegments()
-                        for j in range(len(listOfCurveSegments)):
-                            center_x = curve.getCurveSegment(j).getStart().x()
-                            center_y = curve.getCurveSegment(j).getStart().y()
+                        # listOfCurveSegments = curve.getListOfCurveSegments()
+                        # for j in range(len(listOfCurveSegments)):
+                        #     #center_x = curve.getCurveSegment(j).getStart().x()
+                        #     #center_y = curve.getCurveSegment(j).getStart().y()
+                        #     center_x = curve.getCurveSegment(j).getStart().getXOffset()
+                        #     center_y = curve.getCurveSegment(j).getStart().getYOffset()
+                        for segment in curve.getListOfCurveSegments():
+                            center_x = segment.getStart().getXOffset()
+                            center_y = segment.getStart().getYOffset()
                             reaction_center_list.append([center_x, center_y])
                         reaction_id = reactionGlyph.getReactionId()
                         reaction_id_list.append(reaction_id)
@@ -215,9 +225,10 @@ class IMPORTSBML(WindowedPlugin):
                         kinetics_list.append(kinetics)
                         numSpecRefGlyphs = reactionGlyph.getNumSpeciesReferenceGlyphs()
 
-                        rct_specGlyph_temp_list = []
-                        prd_specGlyph_temp_list = []
-
+                        #rct_specGlyph_temp_list = []
+                        #prd_specGlyph_temp_list = []
+                        rct_specGlyph_handles_temp_list = []
+                        prd_specGlyph_handles_temp_list = []  
 
                         for j in range(numSpecRefGlyphs):
                             alignment_name = TextAlignment.CENTER
@@ -225,13 +236,21 @@ class IMPORTSBML(WindowedPlugin):
                             specRefGlyph = reactionGlyph.getSpeciesReferenceGlyph(j)
                             #specRefGlyph_id = specRefGlyph.getSpeciesReferenceGlyphId()
 
-                            # curve = specRefGlyph.getCurve()
-                            # listOfCurveSegments = curve.getListOfCurveSegments()
-                            # for k in range(len(listOfCurveSegments)):
-                                #print(curve.getCurveSegment(k).getStart().x())
-                                #print(curve.getCurveSegment(k).getEnd().y())
-                                #print(curve.getCurveSegment(k).getBasePoint1) #no children
-                                #print(curve.getCurveSegment(k).getBasePoint2)
+                            curve = specRefGlyph.getCurve()                             
+                            for segment in curve.getListOfCurveSegments():
+                                    # print(segment.getStart().getXOffset())
+                                    # print(segment.getStart().getYOffset())
+                                    # print(segment.getEnd().getXOffset())
+                                    # print(segment.getEnd().getYOffset())
+                                    try:
+                                        center_handle = [segment.getBasePoint1().getXOffset(), 
+                                                    segment.getBasePoint1().getYOffset()]                                
+                                        spec_handle = [segment.getBasePoint2().getXOffset(),
+                                                segment.getBasePoint2().getYOffset()]
+                                    except:
+                                        center_handle = []
+                                        spec_handle = []
+
                             role = specRefGlyph.getRoleString()
                             specGlyph_id = specRefGlyph.getSpeciesGlyphId()
                             specGlyph = layout.getSpeciesGlyph(specGlyph_id)
@@ -243,25 +262,33 @@ class IMPORTSBML(WindowedPlugin):
                                     textGlyph = textGlyph_temp
 
                             spec_id = specGlyph.getSpeciesId()
+                            spec = model_layout.getSpecies(spec_id)
+                            try:
+                                concentration = spec.getInitialConcentration()
+                            except:
+                                concentration = 1.
                             spec_boundingbox = specGlyph.getBoundingBox()
-                            text_boundingbox = textGlyph.getBoundingBox()
                             height = spec_boundingbox.getHeight()
                             width = spec_boundingbox.getWidth()
                             pos_x = spec_boundingbox.getX()
                             pos_y = spec_boundingbox.getY()
-                            text_pos_x = text_boundingbox.getX()
-                            text_pos_y = text_boundingbox.getY()
 
-                            if text_pos_x < pos_x:
-                                alignment_name = TextAlignment.LEFT
-                            if text_pos_x > pos_x:
-                                alignment_name = TextAlignment.RIGHT  
-                            if text_pos_y < pos_y:
-                                position_name = TextPosition.ABOVE
-                            if text_pos_y > pos_y:
-                                position_name = TextPosition.BELOW
-                            if text_pos_y == pos_y and text_pos_x != pos_x:
-                                position_name = TextPosition.NEXT_TO    
+                            try:
+                                text_boundingbox = textGlyph.getBoundingBox()
+                                text_pos_x = text_boundingbox.getX()
+                                text_pos_y = text_boundingbox.getY()
+                                if text_pos_x < pos_x:
+                                    alignment_name = TextAlignment.LEFT
+                                if text_pos_x > pos_x:
+                                    alignment_name = TextAlignment.RIGHT  
+                                if text_pos_y < pos_y:
+                                    position_name = TextPosition.ABOVE
+                                if text_pos_y > pos_y:
+                                    position_name = TextPosition.BELOW
+                                if text_pos_y == pos_y and text_pos_x != pos_x:
+                                    position_name = TextPosition.NEXT_TO 
+                            except:
+                                pass   
 
                             if specGlyph_id not in specGlyph_id_list:
                                 spec_id_list.append(spec_id)
@@ -271,17 +298,21 @@ class IMPORTSBML(WindowedPlugin):
                                 spec_position_list.append([pos_x,pos_y])
                                 spec_text_alignment_list.append(alignment_name)
                                 spec_text_position_list.append(position_name)
+                                spec_concentration_list.append(concentration)
+                            
 
                             if role == "substrate": #it is a rct
-                                rct_specGlyph_temp_list.append(specGlyph_id)
+                                #rct_specGlyph_temp_list.append(specGlyph_id)
+                                rct_specGlyph_handles_temp_list.append([specGlyph_id,spec_handle])
                             elif role == "product": #it is a prd
-                                prd_specGlyph_temp_list.append(specGlyph_id)
+                                #prd_specGlyph_temp_list.append(specGlyph_id)
+                                prd_specGlyph_handles_temp_list.append([specGlyph_id,spec_handle])
 
-                        rct_specGlyph_list.append(rct_specGlyph_temp_list)
-                        prd_specGlyph_list.append(prd_specGlyph_temp_list)
-
-                    #print(reaction_center_list)
-
+                        #rct_specGlyph_list.append(rct_specGlyph_temp_list)
+                        #prd_specGlyph_list.append(prd_specGlyph_temp_list)
+                        reaction_center_handle_list.append(center_handle)
+                        rct_specGlyph_handle_list.append(rct_specGlyph_handles_temp_list)
+                        prd_specGlyph_handle_list.append(prd_specGlyph_handles_temp_list)    
 
                     rPlugin = layout.getPlugin("render")
                     if (rPlugin != None and rPlugin.getNumLocalRenderInformationObjects() > 0):
@@ -291,6 +322,7 @@ class IMPORTSBML(WindowedPlugin):
                         comp_render = []
                         spec_render = []
                         rxn_render = []
+                        #text_render = []
                         for  j in range ( 0, info.getNumColorDefinitions()):
                             color = info.getColorDefinition(j)
                             color_list.append([color.getId(),color.createValueString()])
@@ -418,6 +450,7 @@ class IMPORTSBML(WindowedPlugin):
                 #     wx.MessageBox("Orphan nodes are removed.", "Message", wx.OK | wx.ICON_INFORMATION)
                 for i in range (numSpec_in_reaction):
                     temp_id = spec_specGlyph_id_list[i][0]
+                    temp_concentration = spec_concentration_list[i]
                     tempGlyph_id = spec_specGlyph_id_list[i][1]
                     dimension = spec_dimension_list[i]
                     position = spec_position_list[i]
@@ -437,7 +470,7 @@ class IMPORTSBML(WindowedPlugin):
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]),
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                                 border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                                border_width=spec_border_width, shape_index=shapeIdx)
+                                border_width=spec_border_width, shape_index=shapeIdx, concentration = temp_concentration)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
@@ -468,7 +501,7 @@ class IMPORTSBML(WindowedPlugin):
                                 size=Vec2(dimension[0],dimension[1]), position=Vec2(position[0],position[1]),
                                 fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                                 border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                                border_width=spec_border_width, shape_index=shapeIdx)
+                                border_width=spec_border_width, shape_index=shapeIdx, concentration = temp_concentration)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "alignment", text_alignment)
                                 api.set_node_shape_property(net_index, nodeIdx_temp, -1, "position", text_position)
                                 id_list.append(temp_id)
@@ -509,44 +542,78 @@ class IMPORTSBML(WindowedPlugin):
                     for i in range(len(nodeIdx_list)):
                         api.set_compartment_of_node(net_index=net_index, node_index=nodeIdx_list[i], comp_index=0)
 
-                #handle_positions, center_pos was set as the default:
-                #can not find a way from libsml to do this so far
 
                 nodeIdx_specGlyph_whole_list = nodeIdx_specGlyph_list + nodeIdx_specGlyph_alias_list
 
                 for i in range (numReactionGlyphs):
                     src = []
                     dst = []
+                    src_handle = []
+                    dst_handle = []
                     temp_id = reaction_id_list[i]
-                    center_position = reaction_center_list[i]
                     kinetics = kinetics_list[i]
-                    rct_num = len(rct_specGlyph_list[i])
-                    prd_num = len(prd_specGlyph_list[i])
+                    rct_num = len(rct_specGlyph_handle_list[i])
+                    prd_num = len(prd_specGlyph_handle_list[i])
 
+                    # for j in range(rct_num):
+                    #     temp_specGlyph_id = rct_specGlyph_list[i][j]
+                    #     for k in range(numSpec_in_reaction):
+                    #         if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
+                    #             rct_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                
+                    #     src.append(rct_idx)
+
+                    # for j in range(prd_num):
+                    #     temp_specGlyph_id = prd_specGlyph_list[i][j]
+                    #     for k in range(numSpec_in_reaction):
+                    #         if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
+                    #             prd_idx = nodeIdx_specGlyph_whole_list[k][0]
+                    #     dst.append(prd_idx)
+ 
                     for j in range(rct_num):
-                        temp_specGlyph_id = rct_specGlyph_list[i][j]
+                        temp_specGlyph_id = rct_specGlyph_handle_list[i][j][0]
                         for k in range(numSpec_in_reaction):
                             if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
                                 rct_idx = nodeIdx_specGlyph_whole_list[k][0]
                         src.append(rct_idx)
+                        src_handle.append(rct_specGlyph_handle_list[i][j][1])
 
                     for j in range(prd_num):
-                        temp_specGlyph_id = prd_specGlyph_list[i][j]
+                        temp_specGlyph_id = prd_specGlyph_handle_list[i][j][0]
                         for k in range(numSpec_in_reaction):
                             if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
                                 prd_idx = nodeIdx_specGlyph_whole_list[k][0]
                         dst.append(prd_idx)
+                        dst_handle.append(prd_specGlyph_handle_list[i][j][1])
 
                     for j in range(len(rxn_render)):
                         if temp_id == rxn_render[j][0]:
                             reaction_line_color = rxn_render[j][1]
                             reaction_line_width = rxn_render[j][2]
-                    #print(kinetics)
-                    #print(center_position)
-                    api.add_reaction(net_index, id=temp_id, reactants=src, products=dst, rate_law = kinetics,
-                    fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
-                    line_thickness=reaction_line_width, center_pos = Vec2(center_position[0],center_position[1]))
 
+                    try:
+                        center_position = reaction_center_list[i]
+                        center_handle = reaction_center_handle_list[i]
+                        handles = [center_handle]
+                        handles.extend(src_handle)
+                        handles.extend(dst_handle)                        
+                        idx = api.add_reaction(net_index, id=temp_id, reactants=src, products=dst,
+                        fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
+                        line_thickness=reaction_line_width)
+                        api.update_reaction(net_index, idx, ratelaw = kinetics)
+                        handles_Vec2 = []          
+                        for i in range(len(handles)):
+                            handles_Vec2.append(Vec2(handles[i][0],handles[i][1]))
+                        api.update_reaction(net_index, idx, 
+                        center_pos = Vec2(center_position[0],center_position[1]), 
+                        handle_positions=handles_Vec2)
+
+                    except: #There is no info about the center/handle positions, so set as default
+                        idx = api.add_reaction(net_index, id=temp_id, reactants=src, products=dst,
+                        fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
+                        line_thickness=reaction_line_width)
+                        api.update_reaction(net_index, idx, ratelaw = kinetics)
+            
             else: # there is no layout information, assign position randomly and size as default
                 comp_id_list = Comps_ids
 
@@ -565,11 +632,15 @@ class IMPORTSBML(WindowedPlugin):
                 for i in range (numFloatingNodes):
                     temp_id = FloatingNodes_ids[i]
                     comp_id = model.getCompartmentIdSpeciesIsIn(temp_id)
+                    try:
+                        temp_concentration = model.getSpeciesInitialConcentration(temp_id)
+                    except:
+                        temp_concentration = 1.0
                     nodeIdx_temp = api.add_node(net_index, id=temp_id, size=Vec2(60,40), floating_node = True,
                     position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
                     fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                     border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                    border_width=spec_border_width, shape_index=shapeIdx)
+                    border_width=spec_border_width, shape_index=shapeIdx, concentration=temp_concentration)
                     for j in range(numComps):
                         if comp_id == comp_id_list[j]:
                             comp_node_list[j].append(nodeIdx_temp)
@@ -577,11 +648,15 @@ class IMPORTSBML(WindowedPlugin):
                 for i in range (numBoundaryNodes):
                     temp_id = BoundaryNodes_ids[i]
                     comp_id = model.getCompartmentIdSpeciesIsIn(temp_id)
+                    try:
+                        temp_concentration = model.getSpeciesInitialConcentration(temp_id)
+                    except:
+                        temp_concentration = 1.0
                     nodeIdx_temp = api.add_node(net_index, id=temp_id, size=Vec2(60,40), floating_node = False,
                     position=Vec2(40 + math.trunc (_random.random()*800), 40 + math.trunc (_random.random()*800)),
                     fill_color=api.Color(spec_fill_color[0],spec_fill_color[1],spec_fill_color[2]),
                     border_color=api.Color(spec_border_color[0],spec_border_color[1],spec_border_color[2]),
-                    border_width=spec_border_width, shape_index=shapeIdx)
+                    border_width=spec_border_width, shape_index=shapeIdx, concentration=temp_concentration)
                     for j in range(numComps):
                         if comp_id == comp_id_list[j]:
                             comp_node_list[j].append(nodeIdx_temp)
@@ -594,8 +669,6 @@ class IMPORTSBML(WindowedPlugin):
                             node_list_temp = comp_node_list[j]
                         for k in range(len(node_list_temp)):
                             api.set_compartment_of_node(net_index=net_index, node_index=node_list_temp[k], comp_index=i)
-
-                #handle_positions, center_pos was set as the default
 
                 numNodes = api.node_count(net_index)
                 allNodes = api.get_nodes(net_index)
@@ -667,9 +740,12 @@ class IMPORTSBML(WindowedPlugin):
                                 if comp_id == Comps_ids[i]:
                                     api.set_compartment_of_node(net_index=net_index, node_index=nodeIdx_temp, comp_index=i)
     
-                        api.add_reaction(net_index, id=temp_id, reactants=src_corr, products=dst_corr, rate_law = kinetics,
+                        idx = api.add_reaction(net_index, id=temp_id, reactants=src_corr, products=dst_corr,
                         fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2]),
                         line_thickness=reaction_line_width)
+                        api.update_reaction(net_index, idx, ratelaw = kinetics)
+
+
                         #set the information for handle positions, center positions and use bezier as default
                     
                     except:
