@@ -24,9 +24,9 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.1',
-        short_desc='Simulate a Network.',
-        long_desc='Simulate network on canvas using roadrunner and visualize the results.',
+        version='0.0.2',
+        short_desc='Simulate a reaction network.',
+        long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS
     )
     def create_window(self, dialog):
@@ -97,7 +97,7 @@ class SimulateModel(WindowedPlugin):
         row = 1
         species = self.model.getListOfAllSpecies()
         for sidx, s in enumerate(species):
-            self.grid.Add(wx.StaticText(self.window, -1, label=s, size=(30,20)), pos=(row,1))
+            self.grid.Add(wx.StaticText(self.window, -1, label=s, size=(40,20)), pos=(row,1))
             sval = 0.0
             if self.model.isSpeciesValueSet(s):
                 sval = self.model.getSpeciesInitialConcentration(s)
@@ -110,10 +110,10 @@ class SimulateModel(WindowedPlugin):
         row +=1
         params = self.model.getListOfParameterIds()
         for pidx, p in enumerate(params):
-            self.grid.Add(wx.StaticText(self.window, -1, label=p, size=(30,20)), pos=(row,1))
+            self.grid.Add(wx.StaticText(self.window, -1, label=p, size=(40,20)), pos=(row,1))
             pval = 1.0
             if self.model.isParameterValueSet(p):
-                pval = self.model.getParameterValue(p) 
+                pval = self.model.getParameterValue(p) # TODO kind of an issue that it can only do integers
             tc_slider = SliderWithText(self.window, init_val=pval, name=p)
             self.param_iv_tc.append(tc_slider)
             self.grid.Add(tc_slider, pos=(row, 2), span=(1,2))
@@ -125,8 +125,10 @@ class SimulateModel(WindowedPlugin):
         self.nodeinfo = dict()
         # maps ids (names) to indices and display text. points is the quantity at all the time points
         for n in api.get_nodes(0):
+            self.nodeinfo[n.id] = {"index": n.index, "points": [], "floating": n.floating_node}
             if n.floating_node:
-                self.nodeinfo[n.id] = {"index": n.index, "points": []}
+                self.nodeinfo[n.id]["points"] = [n.concentration]
+            # TODO do first point here by pulling th concentration from the node
         self.reacinfo = dict()
         for r in api.get_reactions(0):
             self.reacinfo[r.id] = {"index": r.index, "rate_law": ""}
@@ -175,7 +177,7 @@ class SimulateModel(WindowedPlugin):
                 self.model.addInitialAssignment(name, str(f_inpt))
         # update rate laws
         for r in self.model.getListOfReactionIds():
-            self.reacinfo[r]["rate_law"] = self.model.getRateLaw(r) 
+            self.reacinfo[r]["rate_law"] = self.model.getRateLaw(r) # TODO i really think this process is redundant. do i even need to have this dictionary?
 
         self.go_btn.Disable()
         self.stop_btn.Show()
@@ -217,7 +219,7 @@ class SimulateModel(WindowedPlugin):
         for i in range(len(sim.colnames)):
             col = sim[:,i]
             node_id = sim.colnames[i]
-            if node_id in self.nodeinfo: # this should always be true
+            if node_id in self.nodeinfo: # TODO this should always be true
                 self.nodeinfo[node_id]["points"].extend(col)
 
     def update_network(self, net_index):
@@ -227,8 +229,10 @@ class SimulateModel(WindowedPlugin):
         with api.group_action():
             for node_id in self.nodeinfo:
                 idx = self.nodeinfo[node_id]["index"]
-                final_conc = self.nodeinfo[node_id]["points"][-1]
-                api.update_node(net_index, idx, concentration=final_conc)
+                #if len(self.nodeinfo[node_id]["points"]) > 0:
+                if self.nodeinfo[node_id]["floating"]:
+                    final_conc = self.nodeinfo[node_id]["points"][-1]
+                    api.update_node(net_index, idx, concentration=final_conc)
             for reac_id in self.reacinfo:
                 idx = self.reacinfo[reac_id]["index"]
                 api.update_reaction(net_index, idx, ratelaw=self.reacinfo[reac_id]["rate_law"])
@@ -244,7 +248,7 @@ class SimulateModel(WindowedPlugin):
 
     def remove(self, evt):
         try:
-            unbind_handler(self.paint_id) 
+            unbind_handler(self.paint_id) # TODO this should happen in events.py, not here
         except KeyError:
             pass
 
@@ -274,6 +278,7 @@ class SimulateModel(WindowedPlugin):
         brush2 = wx.Brush(wx.Colour(0,250,70), style = wx.BRUSHSTYLE_SOLID)
         yellowpen = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(250,230,0)))
         yellowbrush = wx.Brush(wx.Colour(250,230,0), style = wx.BRUSHSTYLE_SOLID)
+        # blue brush
         bg_w = 10
         bg_h = 50
         bg_x = 20 
@@ -299,11 +304,12 @@ class SimulateModel(WindowedPlugin):
         for node_id in self.nodeinfo:
             info = self.nodeinfo[node_id]
             node = api.get_node_by_index(net_index, info["index"])
-            # draw background
-            gc.SetPen(pen1)
-            gc.SetBrush(brush1)
-            gc.DrawRoundedRectangle(node.position.x - bg_x, node.position.y - bg_y, bg_w, bg_h, 2)
-            if len(info["points"]) > 0:
+            #if len(info["points"]) > 0:
+            if info["floating"]:
+                # draw background
+                gc.SetPen(pen1)
+                gc.SetBrush(brush1)
+                gc.DrawRoundedRectangle(node.position.x - bg_x, node.position.y - bg_y, bg_w, bg_h, 2)
                 conc = info["points"][-1]
                 # draw dynamic bar
                 if conc <= max_conc:
@@ -315,6 +321,25 @@ class SimulateModel(WindowedPlugin):
                     gc.SetPen(yellowpen)
                     bar = rect_from_conc(max_conc)
                 gc.DrawRoundedRectangle(node.position.x - bar.position.x, node.position.y - bar.position.y, bar.size.x, bar.size.y, 0)
+            '''
+            else: # boundary node
+                # draw background
+                gc.SetPen(pen1)
+                gc.SetBrush(brush1)
+                gc.DrawRoundedRectangle(node.position.x - bg_x, node.position.y - bg_y, bg_w, bg_h, 2)
+                conc = info["points"][-1]
+                # draw dynamic bar
+                if conc <= max_conc:
+                    gc.SetBrush(brush2)
+                    gc.SetPen(pen2)
+                    bar = rect_from_conc(conc)
+                else:
+                    gc.SetBrush(yellowbrush)
+                    gc.SetPen(yellowpen)
+                    bar = rect_from_conc(max_conc)
+                gc.DrawRoundedRectangle(node.position.x - bar.position.x, node.position.y - bar.position.y, bar.size.x, bar.size.y, 0)
+            '''
+
 
 class SliderWithText(wx.Panel):
     def __init__(self, parent, init_val=0.0, name=None):
@@ -359,7 +384,7 @@ class SliderWithText(wx.Panel):
 
         try:
             val = float(self.tc.GetValue())
-        except ValueError as err: 
+        except ValueError as err: # TODO will need to do something different than this but dont remember what
             print(err)
             return
         self._set_slider_val(val)
