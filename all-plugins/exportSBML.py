@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.1',
+        version='0.5.3',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -36,14 +36,14 @@ class ExportSBML(WindowedPlugin):
         """
         self.window = wx.Panel(dialog, pos=(5,100), size=(300, 320))
 
-        show_btn = wx.Button(self.window, -1, 'Export', (5, 5))
-        show_btn.Bind(wx.EVT_BUTTON, self.Show)
+        export_btn = wx.Button(self.window, -1, 'Export and Save', (5, 5))
+        export_btn.Bind(wx.EVT_BUTTON, self.Export)
 
-        copy_btn = wx.Button(self.window, -1, 'Copy To Clipboard', (83, 5))
+        copy_btn = wx.Button(self.window, -1, 'Copy To Clipboard', (130, 5))
         copy_btn.Bind(wx.EVT_BUTTON, self.Copy)
 
-        save_btn = wx.Button(self.window, -1, 'Save', (205, 5))
-        save_btn.Bind(wx.EVT_BUTTON, self.Save)
+        #save_btn = wx.Button(self.window, -1, 'Save', (205, 5))
+        #save_btn.Bind(wx.EVT_BUTTON, self.Save)
 
         wx.StaticText(self.window, -1, 'SBML string:', (5,30))
         self.SBMLText = wx.TextCtrl(self.window, -1, "", (10, 50), size=(260, 220), style=wx.TE_MULTILINE|wx.HSCROLL)
@@ -65,12 +65,30 @@ class ExportSBML(WindowedPlugin):
             wx.MessageBox("Unable to open the clipboard", "Error")
 
 
-    def Show(self, evt):
+    def Export(self, evt):
         """
-        Handler for the "Export" button.
+        Handler for the "Export and Save" button.
+        Export the Network on canvas and save the SBML string to a file.
         """
         sbmlStr_layout_render = self.NetworkToSBML()
         self.SBMLText.SetValue(sbmlStr_layout_render)
+
+        #save to local
+        self.dirname=""  #set directory name to blank 
+        dlg = wx.FileDialog(self.window, "Save As", self.dirname, wildcard="SBML files (*.xml)|*.xml", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        if dlg.ShowModal() == wx.ID_OK:
+            # Grab the content to be saved
+            itcontains = self.SBMLText.GetValue()
+            # Open the file for write, write, close
+            self.filename=dlg.GetFilename()
+            self.dirname=dlg.GetDirectory()
+            filehandle=open(os.path.join(self.dirname, self.filename),'w')
+            filehandle.write(itcontains)
+            filehandle.close()
+        # Get rid of the dialog to keep things tidy
+        dlg.Destroy()
+
+
 
     def NetworkToSBML(self):
         """
@@ -82,8 +100,12 @@ class ExportSBML(WindowedPlugin):
             str = str.replace(' ', '')  
             list = re.split('[+|\-|*|/|(|)]', str)
             list = [i for i in list if i != '']
+            list_update = []
+            for i in list:
+                x = i.split(',')
+                list_update.extend(x)
             res = []
-            [res.append(x) for x in list if x not in res and not x.isdigit()]
+            [res.append(x) for x in list_update if x not in res and not x.isdigit()]
             return res
 
 
@@ -98,6 +120,9 @@ class ExportSBML(WindowedPlugin):
             allNodes = api.get_nodes(netIn)
             allReactions = api.get_reactions(netIn)
             allcompartments = api.get_compartments(netIn)
+            #print("allNodes:", allNodes)
+            #print("allReactions:", allReactions)
+            #print("allcompartments:", allcompartments)
             numCompartments = len(allcompartments)      
 #######################################
 
@@ -189,12 +214,16 @@ class ExportSBML(WindowedPlugin):
                 reaction_id = allReactions[i].id
                 rct = [] # id list of the rcts
                 prd = []
+                mod = []
                 rct_num = len(allReactions[i].sources)
                 prd_num = len(allReactions[i].targets)
+                mod_num = len(allReactions[i].modifiers)
                 for j in range(rct_num):
                     rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
                 for j in range(prd_num):
                     prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                for j in range(mod_num):
+                    mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
 
                 kinetic_law_from_user = allReactions[i].rate_law
                 
@@ -235,8 +264,7 @@ class ExportSBML(WindowedPlugin):
                             for j in range(prd_num):
                                 kinetic_law = kinetic_law + '*' + prd[j]
                         kinetic_law = kinetic_law + ')'
-
-                    
+   
                 reaction = model.createReaction()
                 reaction.setId(allReactions[i].id)
                 reaction.setReversible(False)
@@ -257,7 +285,7 @@ class ExportSBML(WindowedPlugin):
                     reference.setSpecies(rct[j])
                     ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
                     reference.setId(ref_id)
-                    reference.setStoichiometry(1.)
+                    #reference.setStoichiometry(1.)
                     reference.setConstant(False)
 
                 for j in range(prd_num):
@@ -265,8 +293,14 @@ class ExportSBML(WindowedPlugin):
                     reference.setSpecies(prd[j])
                     ref_id = "SpecRef_" + reaction_id + "_prd" + str(j)
                     reference.setId(ref_id)
-                    reference.setStoichiometry(1.)
+                    #reference.setStoichiometry(1.)
                     reference.setConstant(False)
+
+                for j in range(mod_num):
+                    reference = reaction.createModifier()
+                    reference.setSpecies(mod[j])
+                    ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
+                    reference.setId(ref_id)
 
             # create the Layout
 
@@ -442,11 +476,13 @@ class ExportSBML(WindowedPlugin):
 
                 rct = [] # id list of the rcts
                 prd = []
+                mod = []
                 rct_index = []
                 prd_index = []
+                mod_index = []
                 rct_num = len(allReactions[i].sources)
                 prd_num = len(allReactions[i].targets)
-
+                mod_num = len(allReactions[i].modifiers)
 
                 for j in range(rct_num):
                     rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
@@ -454,6 +490,9 @@ class ExportSBML(WindowedPlugin):
                 for j in range(prd_num):
                     prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
                     prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
+                for j in range(mod_num):
+                    mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                    mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
                 for j in range(rct_num):
                     ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
 
@@ -507,6 +546,16 @@ class ExportSBML(WindowedPlugin):
                     height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
                     cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
 
+                for j in range(mod_num):
+                    ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
+                    speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                    specsRefG_id = "SpecRefG_" + reaction_id + "_mod" + str(j)
+                    specG_id = "SpecG_" + mod[j]  + '_idx_' + str(mod_index[j])
+                    speciesReferenceGlyph.setId(specsRefG_id)
+                    speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                    speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                    speciesReferenceGlyph.setRole(SPECIES_ROLE_MODIFIER)
+
             sbmlStr_layout = writeSBMLToString(document) #sbmlStr is w/o layout info 
 
             doc = readSBMLFromString(sbmlStr_layout)
@@ -536,7 +585,7 @@ class ExportSBML(WindowedPlugin):
             # color = rInfo.createColorDefinition()
             # color.setId("black")
             # color.setColorValue("#000000")
-            
+
             if numCompartments != 0:  
                 for i in range(len(allcompartments)):
                     comp_id = allcompartments[i].id
@@ -569,8 +618,10 @@ class ExportSBML(WindowedPlugin):
             else:
                 comp_border_width = 2.
                 #set default compartment with white color
-                fill_color_str = '#00ffffff'
-                border_color_str = '#00ffffff'
+                #fill_color_str = '#00ffffff'
+                #border_color_str = '#00ffffff'
+                fill_color_str = '#ffffff'
+                border_color_str = '#ffffff'
 
                 color = rInfo.createColorDefinition()
                 color.setId("comp_fill_color")
@@ -606,10 +657,10 @@ class ExportSBML(WindowedPlugin):
                     text_line_color_str =  '#%02x%02x%02x' % (font_color.r,font_color.g,font_color.b)
                 except:#text-only
                     #set default species/node with white color
-                    #spec_fill_color_str = '#ffffff'
-                    #spec_border_color_str = '#ffffff'
-                    spec_fill_color_str = '#00ffffff'
-                    spec_border_color_str = '#00ffffff'
+                    #spec_fill_color_str = '#00ffffff'
+                    #spec_border_color_str = '#00ffffff'
+                    spec_fill_color_str = 'ffffff'
+                    spec_border_color_str = 'ffffff'
                     spec_border_width = 2.
                     text_font_size = 11
                     text_line_color_str = '#000000'
@@ -698,24 +749,24 @@ class ExportSBML(WindowedPlugin):
             sbmlStr_layout_render = writeSBMLToString(doc)
             return sbmlStr_layout_render
 
-    def Save(self, evt):
-        """
-        Handler for the "Save" button.
-        Save the SBML string to a file.
-        """
-        self.dirname=""  #set directory name to blank 
-        dlg = wx.FileDialog(self.window, "Save As", self.dirname, wildcard="SBML files (*.xml)|*.xml", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        if dlg.ShowModal() == wx.ID_OK:
-            # Grab the content to be saved
-            itcontains = self.SBMLText.GetValue()
-            # Open the file for write, write, close
-            self.filename=dlg.GetFilename()
-            self.dirname=dlg.GetDirectory()
-            filehandle=open(os.path.join(self.dirname, self.filename),'w')
-            filehandle.write(itcontains)
-            filehandle.close()
-        # Get rid of the dialog to keep things tidy
-        dlg.Destroy()
+    # def Save(self, evt):
+    #     """
+    #     Handler for the "Save" button.
+    #     Save the SBML string to a file.
+    #     """
+    #     self.dirname=""  #set directory name to blank 
+    #     dlg = wx.FileDialog(self.window, "Save As", self.dirname, wildcard="SBML files (*.xml)|*.xml", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+    #     if dlg.ShowModal() == wx.ID_OK:
+    #         # Grab the content to be saved
+    #         itcontains = self.SBMLText.GetValue()
+    #         # Open the file for write, write, close
+    #         self.filename=dlg.GetFilename()
+    #         self.dirname=dlg.GetDirectory()
+    #         filehandle=open(os.path.join(self.dirname, self.filename),'w')
+    #         filehandle.write(itcontains)
+    #         filehandle.close()
+    #     # Get rid of the dialog to keep things tidy
+    #     dlg.Destroy()
 
 
 
