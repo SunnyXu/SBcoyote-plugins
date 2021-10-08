@@ -24,7 +24,7 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.2',
+        version='0.0.3',
         short_desc='Simulate a reaction network.',
         long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS
@@ -59,8 +59,13 @@ class SimulateModel(WindowedPlugin):
                 break
        
         sbml = exportSBML.ExportSBML.NetworkToSBML(self)
-        
-        self.model = simplesbml.loadSBMLStr(sbml)
+        try:
+            self.model = simplesbml.loadSBMLStr(sbml)
+        except: 
+            wx.MessageBox('Invalid SBML file.', 'Error', wx.OK | wx.ICON_INFORMATION)
+            return self.window
+        #self.model = simplesbml.loadSBMLStr(sbml)
+
 
         self.main_sizer = wx.BoxSizer(orient=wx.VERTICAL)
         self.grid = wx.GridBagSizer(vgap=10, hgap=5)
@@ -123,11 +128,14 @@ class SimulateModel(WindowedPlugin):
 
         # for painting and updating model
         self.nodeinfo = dict()
+        self.max_conc = 0
         # maps ids (names) to indices and display text. points is the quantity at all the time points
         for n in api.get_nodes(0):
             self.nodeinfo[n.id] = {"index": n.index, "points": [], "floating": n.floating_node}
             if n.floating_node:
                 self.nodeinfo[n.id]["points"] = [n.concentration]
+                if n.concentration > self.max_conc:
+                    self.max_conc = n.concentration
             # TODO do first point here by pulling th concentration from the node
         self.reacinfo = dict()
         for r in api.get_reactions(0):
@@ -153,11 +161,15 @@ class SimulateModel(WindowedPlugin):
         #self.chose_stop_sim = True
         self.stop_btn.Hide()
         self.go_btn.Enable()
-        self.timer.Stop()
+        try:
+            self.timer.Stop()
+        except AttributeError:
+            pass
         self.remove(any)
         donemsg = wx.MessageBox("Done.", "Simulate Network", wx.OK | wx.CANCEL)
-        if donemsg == wx.OK:
-            self.update_network(0)
+        self.update_network(0, donemsg==wx.OK)
+        #if donemsg == wx.OK:
+        #    self.update_network(0, True)
 
     def go(self, evt):
 
@@ -177,14 +189,20 @@ class SimulateModel(WindowedPlugin):
                 self.model.addInitialAssignment(name, str(f_inpt))
         # update rate laws
         for r in self.model.getListOfReactionIds():
-            self.reacinfo[r]["rate_law"] = self.model.getRateLaw(r) # TODO i really think this process is redundant. do i even need to have this dictionary?
+            self.reacinfo[r]["rate_law"] = self.model.getRateLaw(r) 
+
+        try:
+            ant = te.sbmlToAntimony(self.model)
+            self.r = te.loada(ant)
+        except BaseException as err: 
+            print(err)
+            wx.MessageBox('Invalid network model. Could not simulate.', 'Error', wx.OK | wx.ICON_INFORMATION)
+            return self.window
 
         self.go_btn.Disable()
         self.stop_btn.Show()
         #self.chose_stop_sim = False
         
-        ant = te.sbmlToAntimony(self.model)
-        self.r = te.loada(ant)
         self.step_time = float(self.sim_step_time.GetValue())
         self.time = self.r.oneStep(0, self.step_time)
         self.update_node_info()
@@ -222,20 +240,21 @@ class SimulateModel(WindowedPlugin):
             if node_id in self.nodeinfo: # TODO this should always be true
                 self.nodeinfo[node_id]["points"].extend(col)
 
-    def update_network(self, net_index):
+    def update_network(self, net_index, update_canvas):
         '''
         Update model node concentrations and reaction rate laws
         '''
-        with api.group_action():
-            for node_id in self.nodeinfo:
-                idx = self.nodeinfo[node_id]["index"]
-                #if len(self.nodeinfo[node_id]["points"]) > 0:
-                if self.nodeinfo[node_id]["floating"]:
-                    final_conc = self.nodeinfo[node_id]["points"][-1]
-                    api.update_node(net_index, idx, concentration=final_conc)
-            for reac_id in self.reacinfo:
-                idx = self.reacinfo[reac_id]["index"]
-                api.update_reaction(net_index, idx, ratelaw=self.reacinfo[reac_id]["rate_law"])
+        if update_canvas:
+            with api.group_action():
+                for node_id in self.nodeinfo:
+                    idx = self.nodeinfo[node_id]["index"]
+                    #if len(self.nodeinfo[node_id]["points"]) > 0:
+                    if self.nodeinfo[node_id]["floating"]:
+                        final_conc = self.nodeinfo[node_id]["points"][-1]
+                        api.update_node(net_index, idx, concentration=final_conc)
+                for reac_id in self.reacinfo:
+                    idx = self.reacinfo[reac_id]["index"]
+                    api.update_reaction(net_index, idx, ratelaw=self.reacinfo[reac_id]["rate_law"])
                 
         # remake the model
         sbml = exportSBML.ExportSBML.NetworkToSBML(self)
@@ -272,18 +291,22 @@ class SimulateModel(WindowedPlugin):
             gc.DrawText(str(round(info["points"][self.current_point], 3)), node.position.x - 30, node.position.y + 50)
         '''
         # create pens
-        pen1 = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(150,150,150)))
-        brush1 = wx.Brush(wx.Colour(150,150,150), style = wx.BRUSHSTYLE_SOLID)
-        pen2 = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(0,250,70)))
-        brush2 = wx.Brush(wx.Colour(0,250,70), style = wx.BRUSHSTYLE_SOLID)
+        pen1 = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(170,170,170)))
+        brush1 = wx.Brush(wx.Colour(170,170,170), style = wx.BRUSHSTYLE_SOLID)
+        pen2 = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(0, 120, 215)))
+        brush2 = wx.Brush(wx.Colour(30, 120, 215), style = wx.BRUSHSTYLE_SOLID)
         yellowpen = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(250,230,0)))
         yellowbrush = wx.Brush(wx.Colour(250,230,0), style = wx.BRUSHSTYLE_SOLID)
+        boundarypen = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(250,200,3)))
+        boundarybrush = wx.Brush(wx.Colour(250,200,3), style = wx.BRUSHSTYLE_SOLID)
         # blue brush
-        bg_w = 10
+        bg_w = 20
         bg_h = 50
-        bg_x = 20 
+        bg_x = 40 
         bg_y = 20
         max_conc = 20 # this is pretty arbitraty, could change
+        if self.max_conc > 0:
+            max_conc = self.max_conc * 3
 
         def rect_from_conc(concentration):
             '''# Calculate dimensions of bar for graph
@@ -384,7 +407,7 @@ class SliderWithText(wx.Panel):
 
         try:
             val = float(self.tc.GetValue())
-        except ValueError as err: # TODO will need to do something different than this but dont remember what
+        except ValueError as err: # TODO implement
             print(err)
             return
         self._set_slider_val(val)
