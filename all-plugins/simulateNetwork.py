@@ -24,7 +24,7 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.3',
+        version='0.0.4',
         short_desc='Simulate a reaction network.',
         long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS
@@ -220,7 +220,7 @@ class SimulateModel(WindowedPlugin):
         '''
         Handler for timer event
         '''
-        self.time = self.r.oneStep(self.time, self.step_time)
+        self.time = self.r.oneStep(self.time, 1)
         self.update_node_info()
         api.update_canvas()
         if self.end_time and self.time >= self.end_time:
