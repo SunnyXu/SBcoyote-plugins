@@ -1,3 +1,4 @@
+
 '''
 Network Simulation Plugin
 '''
@@ -24,7 +25,7 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.4',
+        version='0.0.5',
         short_desc='Simulate a reaction network.',
         long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS
@@ -58,73 +59,79 @@ class SimulateModel(WindowedPlugin):
             elif int(v[i]) > min_version[i]:
                 break
        
-        sbml = exportSBML.ExportSBML.NetworkToSBML(self)
+        self.sbmldoc = exportSBML.ExportSBML.NetworkToSBML(self)
+
+        # create tellurium model
         try:
-            self.model = simplesbml.loadSBMLStr(sbml)
-        except: 
-            wx.MessageBox('Invalid SBML file.', 'Error', wx.OK | wx.ICON_INFORMATION)
+            ant = te.sbmlToAntimony(self.sbmldoc)
+            self.r = te.loada(ant)
+        except BaseException as err: # TODO remove printing 
+            print(err)
+            wx.MessageBox('Invalid network model. Could not simulate.', 'Error', wx.OK | wx.ICON_INFORMATION)
             return self.window
-        #self.model = simplesbml.loadSBMLStr(sbml)
 
-
+        # create window
         self.main_sizer = wx.BoxSizer(orient=wx.VERTICAL)
         self.grid = wx.GridBagSizer(vgap=10, hgap=5)
-        self.sim_grid = wx.GridBagSizer(vgap=5, hgap=15)
+        self.sim_grid = wx.GridBagSizer(vgap=5, hgap=5)
         
         # simulation
+        '''
         self.sim_grid.Add(wx.StaticText(self.window, -1, label="Start"), pos=(1,1))
         self.sim_start_input = wx.TextCtrl(self.window, -1, value="0", size=(40,20))
         self.sim_grid.Add(self.sim_start_input, pos=(1,2))
         self.sim_grid.Add(wx.StaticText(self.window, -1, label="End"), pos=(2,1))
         self.sim_end_input = wx.TextCtrl(self.window, -1, value="20", size=(40,20))
         self.sim_grid.Add(self.sim_end_input, pos=(2,2))
-        self.sim_grid.Add(wx.StaticText(self.window, -1, label="Seconds per Point"), pos=(2,3))
+        '''
+        self.sim_grid.Add(wx.StaticText(self.window, -1, label="Step Size"), pos=(1,1))
+        self.sim_step_size = wx.TextCtrl(self.window, -1, value="1", size=(40,20))
+        self.sim_grid.Add(self.sim_step_size, pos=(1,2))
+
+        self.sim_grid.Add(wx.StaticText(self.window, -1, label="Updates per Second"), pos=(1,3))
         self.sim_step_time = wx.TextCtrl(self.window, -1, value="1.0", size=(40,20))
-        self.sim_grid.Add(self.sim_step_time, pos=(2,4))
-        self.go_btn = wx.Button(self.window, -1, "Simulate", (5,6))
+        self.sim_grid.Add(self.sim_step_time, pos=(1,4))
+
+        self.reset_btn = wx.Button(self.window, -1, "Reset", (2,1))
+        self.reset_btn.Bind(wx.EVT_BUTTON, self.reset)
+        self.sim_grid.Add(self.reset_btn, pos=(2,1))
+
+        self.go_btn = wx.Button(self.window, -1, "Simulate", (2,3))
         self.go_btn.Bind(wx.EVT_BUTTON, self.go)
-        self.sim_grid.Add(self.go_btn, pos=(3,4))
-        self.run_cont = False
-        self.is_continuous = wx.CheckBox(self.window, label="Continuous")
-        self.is_continuous.Bind(wx.EVT_CHECKBOX, self.continuous_mode)
-        self.sim_grid.Add(self.is_continuous, pos=(3,3))
-        self.stop_btn = wx.Button(self.window, label="Stop")
+        self.sim_grid.Add(self.go_btn, pos=(2,3))
+
+        self.stop_btn = wx.Button(self.window, -1, "Stop", (2,2))
         self.stop_btn.Bind(wx.EVT_BUTTON, self.stop_sim)
-        self.sim_grid.Add(self.stop_btn, pos=(4,4))
-        self.stop_btn.Hide()
+        self.sim_grid.Add(self.stop_btn, pos=(2,2))
+        self.stop_btn.Disable()
+
+        self.sim_time = wx.StaticText(self.window, -1, label="")
+        self.sim_grid.Add(self.sim_time, pos=(3,3))
+
         self.main_sizer.Add(self.sim_grid)
         self.main_sizer.AddSpacer(5)
 
-        self.species_iv_tc = []
         self.param_iv_tc = []
         
-        self.grid.Add(wx.StaticText(self.window, -1, label="Species Initial Values"), pos=(0,1), span=(1,2))
         row = 1
-        species = self.model.getListOfAllSpecies()
-        for sidx, s in enumerate(species):
-            self.grid.Add(wx.StaticText(self.window, -1, label=s, size=(40,20)), pos=(row,1))
-            sval = 0.0
-            if self.model.isSpeciesValueSet(s):
-                sval = self.model.getSpeciesInitialConcentration(s)
-            tc_slider = SliderWithText(self.window, init_val=sval, name=s)
-            self.species_iv_tc.append(tc_slider)
-            self.grid.Add(tc_slider, pos=(row, 2), span=(1,2))
-            row += 1
         
         self.grid.Add(wx.StaticText(self.window, -1, label="Parameter Initial Values"), pos=(row,1), span=(1,2))
         row +=1
-        params = self.model.getListOfParameterIds()
-        for pidx, p in enumerate(params):
+        param_ids = self.r.getGlobalParameterIds()
+        param_values = self.r.getGlobalParameterValues() # TODO these are guarenteed to be in same order, but what if param values are not set? will there always be a value?
+        for pidx, p in enumerate(param_ids):
             self.grid.Add(wx.StaticText(self.window, -1, label=p, size=(40,20)), pos=(row,1))
-            pval = 1.0
-            if self.model.isParameterValueSet(p):
-                pval = self.model.getParameterValue(p) # TODO kind of an issue that it can only do integers
+            pval = param_values[i]
             tc_slider = SliderWithText(self.window, init_val=pval, name=p)
             self.param_iv_tc.append(tc_slider)
             self.grid.Add(tc_slider, pos=(row, 2), span=(1,2))
             row += 1
 
-        self.initial_value_tc = self.species_iv_tc + self.param_iv_tc
+        #self.initial_value_tc = self.species_iv_tc + self.param_iv_tc
+        self.initial_value_tc = self.param_iv_tc
+
+
+        # populate tc - could make a seperate function for this?
 
         # for painting and updating model
         self.nodeinfo = dict()
@@ -144,39 +151,57 @@ class SimulateModel(WindowedPlugin):
         self.main_sizer.Add(self.grid)
 
         self.window.SetSizer(self.main_sizer)
-        return self.window
 
-    def continuous_mode(self, evt):
-        ''' Handler for is_continuous button
-        '''
-        if self.is_continuous.GetValue():
-            self.sim_end_input.Disable()
-        else:
-            self.sim_end_input.Enable()
+        self.paint_id = bind_handler(DidPaintCanvasEvent, self.on_paint)
+        bind_handler(DidNewNetworkEvent, self.remove)
+        self.dialog.Bind(wx.EVT_CLOSE, self.on_close)
+        
+        self.time = 0
+        return self.window
 
     def stop_sim(self, evt):
         '''
         Stops the simulation
         '''
         #self.chose_stop_sim = True
-        self.stop_btn.Hide()
+        self.stop_btn.Disable()
         self.go_btn.Enable()
         try:
             self.timer.Stop()
-        except AttributeError:
+        except AttributeError: # timer hasn't been initialized
             pass
-        self.remove(any)
-        donemsg = wx.MessageBox("Done.", "Simulate Network", wx.OK | wx.CANCEL)
-        self.update_network(0, donemsg==wx.OK)
-        #if donemsg == wx.OK:
-        #    self.update_network(0, True)
+        #self.remove(any) # TODO change this. remove should only happen when the window is closed
+
+        # going to update the network every time the simulation is stopped or "reset" is chosen
+        self.update_network(0)
+        #donemsg = wx.messagebox("done.", "simulate network", wx.ok | wx.cancel)
+        #self.update_network(0, donemsg==wx.ok)
+        #if donemsg == wx.ok:
+        #    self.update_network(0, true)
+
+    def on_close(self, evt):
+        self.stop_sim(evt)
+        self.remove(evt)
+        self.dialog.Destroy()
+
+    def reset(self, evt):
+        '''
+        handler for "reset" button"
+        '''
+        self.r.reset()
+        self.time = 0.0
+        self.sim_time.SetLabel('Time: {}'.format(str(self.time))) #TODO
+        self.update_node_info()
+
 
     def go(self, evt):
 
         # handler for go button
 
         # validate input
-        for sp in self.initial_value_tc:
+        param_indices = []
+        param_values = []
+        for idx, sp in enumerate(self.initial_value_tc):
             name = sp.GetName()
             if sp.IsModified():
                 # check that input is valid
@@ -184,51 +209,48 @@ class SimulateModel(WindowedPlugin):
                 try:
                     f_inpt = float(inpt) # change to float, then change back...
                 except ValueError:
-                    wx.MessageBox("Invalid input for {}".format(name), "Message", wx.OK | wx.ICON_INFORMATION)
+                    wx.MessageBox("Invalid input for {}".format(name), "message", wx.OK | wx.ICON_INFORMATION)
                     return
-                self.model.addInitialAssignment(name, str(f_inpt))
-        # update rate laws
-        for r in self.model.getListOfReactionIds():
-            self.reacinfo[r]["rate_law"] = self.model.getRateLaw(r) 
+                #self.model.addinitialassignment(name, str(f_inpt))
+                #self.r.setValue('init({})'.format(name), f_inpt) # todo is this what i want? always setting initial value?
+                param_indices.append(idx)
+                param_values.append(f_inpt)
+        if len(param_values)>0:
+            self.r.model.setGlobalParameterValues(param_indices, param_values)
 
-        try:
-            ant = te.sbmlToAntimony(self.model)
-            self.r = te.loada(ant)
-        except BaseException as err: 
-            print(err)
-            wx.MessageBox('Invalid network model. Could not simulate.', 'Error', wx.OK | wx.ICON_INFORMATION)
-            return self.window
+                
+        '''
+        # update rate laws
+        for r in self.model.getlistofreactionids():
+            self.reacinfo[r]["rate_law"] = self.model.getratelaw(r) 
+        ''' # todo do not have to use rate laws at all
 
         self.go_btn.Disable()
-        self.stop_btn.Show()
-        #self.chose_stop_sim = False
+        self.stop_btn.Enable()
+        #self.chose_stop_sim = false
         
-        self.step_time = float(self.sim_step_time.GetValue())
-        self.time = self.r.oneStep(0, self.step_time)
+        self.step_time = 1.0 / float(self.sim_step_time.GetValue()) # ex: step time of 0.2 <=> 5 steps will occur per second
+        self.step_size = float(self.sim_step_size.GetValue())
+        self.time = self.r.oneStep(self.time, self.step_size) # note that self.time and self.timer are completely seperate
+        self.sim_time.SetLabel('Time: {}'.format(str(self.time)))
         self.update_node_info()
-        self.timer = wx.Timer(owner=self.window)
-        self.window.Bind(wx.EVT_TIMER, self.do_one_step, self.timer)
-        self.end_time = None
-        if not self.is_continuous.GetValue():
-            self.end_time = float(self.sim_end_input.GetValue())
-        self.paint_id = bind_handler(DidPaintCanvasEvent, self.on_paint)
-        bind_handler(DidNewNetworkEvent, self.remove)
+        self.timer = wx.Timer(owner=self.dialog)
+        self.dialog.Bind(wx.EVT_TIMER, self.do_one_step, self.timer)
 
-        self.timer.Start(1000 * float(self.sim_step_time.GetValue()))
+        self.timer.Start(1000 * self.step_time)
 
     def do_one_step(self, evt):
         '''
-        Handler for timer event
+        handler for timer event
         '''
-        self.time = self.r.oneStep(self.time, 1)
+        self.time = self.r.oneStep(self.time, self.step_size)
+        self.sim_time.SetLabel('Time: {}'.format(str(self.time)))
         self.update_node_info()
-        api.update_canvas()
-        if self.end_time and self.time >= self.end_time:
-            self.stop_sim(evt)
+        # api.update_canvas() # todo occurs when window is closed
 
     def update_node_info(self): 
         ''' 
-        Update concentrations to be displayed by on_paint
+        update concentrations to be displayed by on_paint
         '''
         net_index = 0
         sim = self.r.getFloatingSpeciesConcentrationsNamedArray()
@@ -237,58 +259,47 @@ class SimulateModel(WindowedPlugin):
         for i in range(len(sim.colnames)):
             col = sim[:,i]
             node_id = sim.colnames[i]
-            if node_id in self.nodeinfo: # TODO this should always be true
+            if node_id in self.nodeinfo: # todo this should always be true
                 self.nodeinfo[node_id]["points"].extend(col)
 
-    def update_network(self, net_index, update_canvas):
+    def update_network(self, net_index):
         '''
-        Update model node concentrations and reaction rate laws
+        update model node concentrations and reaction rate laws. called when window is closed.
         '''
-        if update_canvas:
-            with api.group_action():
-                for node_id in self.nodeinfo:
-                    idx = self.nodeinfo[node_id]["index"]
-                    #if len(self.nodeinfo[node_id]["points"]) > 0:
-                    if self.nodeinfo[node_id]["floating"]:
-                        final_conc = self.nodeinfo[node_id]["points"][-1]
-                        api.update_node(net_index, idx, concentration=final_conc)
-                for reac_id in self.reacinfo:
-                    idx = self.reacinfo[reac_id]["index"]
-                    api.update_reaction(net_index, idx, ratelaw=self.reacinfo[reac_id]["rate_law"])
-                
-        # remake the model
-        sbml = exportSBML.ExportSBML.NetworkToSBML(self)
-        self.model = simplesbml.loadSBMLStr(sbml)
-        # update values in text controls
-        for s in self.species_iv_tc:
-            s.SetValue(api.get_node_by_index(0, self.nodeinfo[s.GetName()]["index"]).concentration)
-        for p in self.param_iv_tc:
-            p._is_modified = True # TODO fix
+        with api.group_action():
+            for node_id in self.nodeinfo:
+                idx = self.nodeinfo[node_id]["index"]
+                #if len(self.nodeinfo[node_id]["points"]) > 0:
+                if self.nodeinfo[node_id]["floating"]:
+                    final_conc = self.nodeinfo[node_id]["points"][-1]
+                    api.update_node(net_index, idx, concentration=final_conc)
+            for reac_id in self.reacinfo:
+                idx = self.reacinfo[reac_id]["index"]
+                api.update_reaction(net_index, idx, ratelaw=self.reacinfo[reac_id]["rate_law"])
 
     def remove(self, evt):
         try:
-            unbind_handler(self.paint_id) # TODO this should happen in events.py, not here
+            unbind_handler(self.paint_id) # todo this should happen in events.py, not here
         except KeyError:
             pass
-
 
     def on_paint(self, evt):
 
 
         # paint node concentrations next to the nodes 
         gc = evt.gc
-        # TODO have an option between numbers and shapes
+        # todo have an option between numbers and shapes
         '''
-        font = wx.Font(wx.FontInfo(10))
-        gc.SetFont(font, wx.Colour(0,0,0))
-        pen1 = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(0,0,150)))
-        gc.SetPen(pen1)
+        font = wx.font(wx.fontinfo(10))
+        gc.setfont(font, wx.colour(0,0,0))
+        pen1 = gc.createpen(wx.graphicspeninfo(wx.colour(0,0,150)))
+        gc.setpen(pen1)
 
         net_index = 0
         for node_id in self.nodeinfo:
             info = self.nodeinfo[node_id]
             node = api.get_node_by_index(net_index, info["index"])
-            gc.DrawText(str(round(info["points"][self.current_point], 3)), node.position.x - 30, node.position.y + 50)
+            gc.drawtext(str(round(info["points"][self.current_point], 3)), node.position.x - 30, node.position.y + 50)
         '''
         # create pens
         pen1 = gc.CreatePen(wx.GraphicsPenInfo(wx.Colour(170,170,170)))
@@ -309,7 +320,7 @@ class SimulateModel(WindowedPlugin):
             max_conc = self.max_conc * 3
 
         def rect_from_conc(concentration):
-            '''# Calculate dimensions of bar for graph
+            '''# calculate dimensions of bar for graph
             '''
             # 4 px buffer
             w = bg_w - 8
@@ -322,10 +333,11 @@ class SimulateModel(WindowedPlugin):
             adj_y = y + adj_h - h # maybe switch adj_h and h
 
             return Rect(Vec2(x,adj_y), Vec2(w,adj_h))
-        
+    
         net_index = 0
         for node_id in self.nodeinfo:
             info = self.nodeinfo[node_id]
+            #try:
             node = api.get_node_by_index(net_index, info["index"])
             #if len(info["points"]) > 0:
             if info["floating"]:
@@ -344,6 +356,8 @@ class SimulateModel(WindowedPlugin):
                     gc.SetPen(yellowpen)
                     bar = rect_from_conc(max_conc)
                 gc.DrawRoundedRectangle(node.position.x - bar.position.x, node.position.y - bar.position.y, bar.size.x, bar.size.y, 0)
+            #except:
+            #    pass # TODO handle
             '''
             else: # boundary node
                 # draw background
@@ -408,7 +422,6 @@ class SliderWithText(wx.Panel):
         try:
             val = float(self.tc.GetValue())
         except ValueError as err: # TODO implement
-            print(err)
             return
         self._set_slider_val(val)
         self._is_modified=True
