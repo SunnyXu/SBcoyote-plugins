@@ -25,7 +25,7 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.6',
+        version='0.0.7',
         short_desc='Simulate a reaction network.',
         long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS
@@ -190,7 +190,7 @@ class SimulateModel(WindowedPlugin):
         '''
         self.r.reset()
         self.time = 0.0
-        self.sim_time.SetLabel('Time: {}'.format(str(self.time))) #TODO
+        self.sim_time.SetLabel('Time: {}'.format(str(round(self.time,3)))) #TODO
         self.update_node_info()
 
 
@@ -232,7 +232,7 @@ class SimulateModel(WindowedPlugin):
         self.step_time = 1.0 / float(self.sim_step_time.GetValue()) # ex: step time of 0.2 <=> 5 steps will occur per second
         self.step_size = float(self.sim_step_size.GetValue())
         self.time = self.r.oneStep(self.time, self.step_size) # note that self.time and self.timer are completely seperate
-        self.sim_time.SetLabel('Time: {}'.format(str(self.time)))
+        self.sim_time.SetLabel('Time: {}'.format(str(round(self.time, 3))))
         self.update_node_info()
         self.dialog.Bind(wx.EVT_TIMER, self.do_one_step, self.timer)
 
@@ -243,7 +243,7 @@ class SimulateModel(WindowedPlugin):
         handler for timer event
         '''
         self.time = self.r.oneStep(self.time, self.step_size)
-        self.sim_time.SetLabel('Time: {}'.format(str(self.time)))
+        self.sim_time.SetLabel('Time: {}'.format(str(round(self.time,3))))
         self.update_node_info()
         # api.update_canvas() # todo occurs when window is closed
 
@@ -314,8 +314,8 @@ class SimulateModel(WindowedPlugin):
         # blue brush
         bg_w = 20
         bg_h = 50
-        bg_x = 40 
-        bg_y = 20
+        bg_x = 30 
+        bg_y = 0
         max_conc = 20 # this is pretty arbitraty, could change
         if self.max_conc > 0:
             max_conc = self.max_conc * 3
@@ -345,7 +345,7 @@ class SimulateModel(WindowedPlugin):
                 # draw background
                 gc.SetPen(pen1)
                 gc.SetBrush(brush1)
-                gc.DrawRoundedRectangle(node.position.x - bg_x, node.position.y - bg_y, bg_w, bg_h, 2)
+                gc.DrawRoundedRectangle(node.position.x - bg_x, node.position.y - bg_y - (bg_h - node.size.y), bg_w, bg_h, 2)
                 conc = info["points"][-1]
                 # draw dynamic bar
                 if conc <= max_conc:
@@ -356,7 +356,7 @@ class SimulateModel(WindowedPlugin):
                     gc.SetBrush(yellowbrush)
                     gc.SetPen(yellowpen)
                     bar = rect_from_conc(max_conc)
-                gc.DrawRoundedRectangle(node.position.x - bar.position.x, node.position.y - bar.position.y, bar.size.x, bar.size.y, 0)
+                gc.DrawRoundedRectangle(node.position.x - bar.position.x, node.position.y - bar.position.y - (bg_h - node.size.y), bar.size.x, bar.size.y, 0)
             #except:
             #    pass # TODO handle
             '''
