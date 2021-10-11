@@ -25,7 +25,7 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.5',
+        version='0.0.6',
         short_desc='Simulate a reaction network.',
         long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS
@@ -38,7 +38,7 @@ class SimulateModel(WindowedPlugin):
               dialog
         '''
         self.dialog = dialog
-        self.window = wx.ScrolledWindow(dialog, size=(350, 550))
+        self.window = wx.ScrolledWindow(dialog, size=(370, 550))
         self.window.SetScrollbars(1,1,1,1)
         self.vsizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -66,7 +66,6 @@ class SimulateModel(WindowedPlugin):
             ant = te.sbmlToAntimony(self.sbmldoc)
             self.r = te.loada(ant)
         except BaseException as err: # TODO remove printing 
-            print(err)
             wx.MessageBox('Invalid network model. Could not simulate.', 'Error', wx.OK | wx.ICON_INFORMATION)
             return self.window
 
@@ -157,6 +156,7 @@ class SimulateModel(WindowedPlugin):
         self.dialog.Bind(wx.EVT_CLOSE, self.on_close)
         
         self.time = 0
+        self.timer = wx.Timer(owner=self.dialog)
         return self.window
 
     def stop_sim(self, evt):
@@ -168,7 +168,7 @@ class SimulateModel(WindowedPlugin):
         self.go_btn.Enable()
         try:
             self.timer.Stop()
-        except AttributeError: # timer hasn't been initialized
+        except: # timer hasn't been initialized
             pass
         #self.remove(any) # TODO change this. remove should only happen when the window is closed
 
@@ -212,7 +212,7 @@ class SimulateModel(WindowedPlugin):
                     wx.MessageBox("Invalid input for {}".format(name), "message", wx.OK | wx.ICON_INFORMATION)
                     return
                 #self.model.addinitialassignment(name, str(f_inpt))
-                #self.r.setValue('init({})'.format(name), f_inpt) # todo is this what i want? always setting initial value?
+                #self.r.setValue('init({})'.format(name), f_inpt)
                 param_indices.append(idx)
                 param_values.append(f_inpt)
         if len(param_values)>0:
@@ -234,7 +234,6 @@ class SimulateModel(WindowedPlugin):
         self.time = self.r.oneStep(self.time, self.step_size) # note that self.time and self.timer are completely seperate
         self.sim_time.SetLabel('Time: {}'.format(str(self.time)))
         self.update_node_info()
-        self.timer = wx.Timer(owner=self.dialog)
         self.dialog.Bind(wx.EVT_TIMER, self.do_one_step, self.timer)
 
         self.timer.Start(1000 * self.step_time)
@@ -264,7 +263,7 @@ class SimulateModel(WindowedPlugin):
 
     def update_network(self, net_index):
         '''
-        update model node concentrations and reaction rate laws. called when window is closed.
+        update model node concentrations and reaction rate laws. 
         '''
         with api.group_action():
             for node_id in self.nodeinfo:
@@ -273,9 +272,11 @@ class SimulateModel(WindowedPlugin):
                 if self.nodeinfo[node_id]["floating"]:
                     final_conc = self.nodeinfo[node_id]["points"][-1]
                     api.update_node(net_index, idx, concentration=final_conc)
+            '''
             for reac_id in self.reacinfo:
                 idx = self.reacinfo[reac_id]["index"]
                 api.update_reaction(net_index, idx, ratelaw=self.reacinfo[reac_id]["rate_law"])
+            '''
 
     def remove(self, evt):
         try:
