@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.3',
+        version='0.5.4',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -95,18 +95,18 @@ class ExportSBML(WindowedPlugin):
         Get the network on canvas and change it to an SBML string
         """
 
-        def getSymbols(kinetic_law):
-            str = kinetic_law
-            str = str.replace(' ', '')  
-            list = re.split('[+|\-|*|/|(|)]', str)
-            list = [i for i in list if i != '']
-            list_update = []
-            for i in list:
-                x = i.split(',')
-                list_update.extend(x)
-            res = []
-            [res.append(x) for x in list_update if x not in res and not x.isdigit()]
-            return res
+        # def getSymbols(kinetic_law):
+        #     str = kinetic_law
+        #     str = str.replace(' ', '')  
+        #     list = re.split('[+|\-|*|/|(|)]', str)
+        #     list = [i for i in list if i != '']
+        #     list_update = []
+        #     for i in list:
+        #         x = i.split(',')
+        #         list_update.extend(x)
+        #     res = []
+        #     [res.append(x) for x in list_update if x not in res and not x.isdigit()]
+        #     return res
 
 
         isReversible = True
@@ -210,6 +210,7 @@ class ExportSBML(WindowedPlugin):
                             species.setBoundaryCondition(True)
                             species.setConstant(True)
             # create reactions:
+            parameter_id_value_dict_self_pre = {}
             for i in range(numReactions):
                 reaction_id = allReactions[i].id
                 rct = [] # id list of the rcts
@@ -229,41 +230,21 @@ class ExportSBML(WindowedPlugin):
                 
                 if kinetic_law_from_user == '':
                     kinetic_law = ''
-                    parameter_list = []
                     kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
-                    parameter_list.append('E' + str (i))
-                    parameter_list.append('k' + str (i))
+                    parameter_id_value_dict_self_pre['E' + str(i)] = 0.1
+                    parameter_id_value_dict_self_pre['k' + str(i)] = 0.1
+
                     for j in range(rct_num):
                         kinetic_law = kinetic_law + '*' + rct[j]
                         
                     if isReversible:
                         kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
-                        parameter_list.append('k' + str (i) + 'r')
+                        parameter_id_value_dict_self_pre['k' + str (i) + 'r'] = 0.1
                         for j in range(prd_num):
                             kinetic_law = kinetic_law + '*' + prd[j]
                     kinetic_law = kinetic_law + ')'
                 else:
                     kinetic_law = kinetic_law_from_user
-                    parameter_spec_list = getSymbols(kinetic_law_from_user) 
-                    parameter_list = []
-                    for j in range(len(parameter_spec_list)):
-                        if parameter_spec_list[j] not in spec_id_list:
-                            parameter_list.append(parameter_spec_list[j])
-                    if len(parameter_list) == 0: #If the input kinetic law is invalid
-                        kinetic_law = ''
-                        parameter_list = []
-                        kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
-                        parameter_list.append('E' + str (i))
-                        parameter_list.append('k' + str (i))
-                        for j in range(rct_num):
-                            kinetic_law = kinetic_law + '*' + rct[j]
-                            
-                        if isReversible:
-                            kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
-                            parameter_list.append('k' + str (i) + 'r')
-                            for j in range(prd_num):
-                                kinetic_law = kinetic_law + '*' + prd[j]
-                        kinetic_law = kinetic_law + ')'
    
                 reaction = model.createReaction()
                 reaction.setId(allReactions[i].id)
@@ -271,15 +252,10 @@ class ExportSBML(WindowedPlugin):
                 reaction.setFast(False)
                 if isReversible:
                     reaction.setReversible(True)
-                for j in range(len(parameter_list)):
-                    parameters = model.createParameter()
-                    parameters.setId(parameter_list[j])
-                    parameters.setValue(0.1)
-                    parameters.setConstant(True)
+                
                 kinetics = reaction.createKineticLaw()
                 kinetics.setFormula(kinetic_law)
                 
-
                 for j in range(rct_num):
                     reference = reaction.createReactant()
                     reference.setSpecies(rct[j])
@@ -301,6 +277,14 @@ class ExportSBML(WindowedPlugin):
                     reference.setSpecies(mod[j])
                     ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
                     reference.setId(ref_id)
+
+            parameter_id_value_dict = api.get_parameters(netIn)
+            parameter_id_value_dict.update(parameter_id_value_dict_self_pre)
+            for name,dict_ in parameter_id_value_dict.items():
+                parameters = model.createParameter()
+                parameters.setId(name)
+                parameters.setValue(dict_)
+                parameters.setConstant(True)
 
             # create the Layout
 

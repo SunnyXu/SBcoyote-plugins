@@ -26,7 +26,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.5.3',
+        version='0.5.4',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -411,6 +411,12 @@ class IMPORTSBML(WindowedPlugin):
                 Comps_ids = model.getListOfCompartmentIds()
                 numNodes = numFloatingNodes + numBoundaryNodes
 
+                parameter_list = model.getListOfParameterIds()
+
+                for p in parameter_list:
+                    if model.isParameterValueSet(p): 
+                    #if there is only parameter id without parameter value, it won't be considered 
+                        api.set_parameter_value(net_index, p, model.getParameterValue(p))
 
                 comp_node_list = [0]*numComps #Note: numComps is different from numCompGlyphs
                 for i in range(numComps):
