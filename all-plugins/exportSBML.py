@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.4',
+        version='0.5.6',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -114,8 +114,8 @@ class ExportSBML(WindowedPlugin):
         numNodes = api.node_count(netIn)
         numReactions = api.reaction_count(netIn)
         
-        if numNodes == 0 or numReactions == 0 :
-            wx.MessageBox("Please import a network with at least one reaction on canvas", "Message", wx.OK | wx.ICON_INFORMATION)
+        if numNodes == 0:
+           wx.MessageBox("Please import a network with at least one node on canvas", "Message", wx.OK | wx.ICON_INFORMATION)
         else:
             allNodes = api.get_nodes(netIn)
             allReactions = api.get_reactions(netIn)
@@ -124,7 +124,7 @@ class ExportSBML(WindowedPlugin):
             #print("allReactions:", allReactions)
             #print("allcompartments:", allcompartments)
             numCompartments = len(allcompartments)      
-#######################################
+    #######################################
 
             # Creates an SBMLNamespaces object with the given SBML level, version
             # package name, package version.
@@ -211,6 +211,8 @@ class ExportSBML(WindowedPlugin):
                             species.setConstant(True)
             # create reactions:
             parameter_id_value_dict_self_pre = {}
+            
+            
             for i in range(numReactions):
                 reaction_id = allReactions[i].id
                 rct = [] # id list of the rcts
@@ -245,7 +247,7 @@ class ExportSBML(WindowedPlugin):
                     kinetic_law = kinetic_law + ')'
                 else:
                     kinetic_law = kinetic_law_from_user
-   
+
                 reaction = model.createReaction()
                 reaction.setId(allReactions[i].id)
                 reaction.setReversible(False)
@@ -285,7 +287,7 @@ class ExportSBML(WindowedPlugin):
                 parameters.setId(name)
                 parameters.setValue(dict_)
                 parameters.setConstant(True)
-
+            
             # create the Layout
 
             #
@@ -307,7 +309,7 @@ class ExportSBML(WindowedPlugin):
             # rPlugin = model.getPlugin("render")
             # if rPlugin is None:
             #   print("there is no render outside layout.")
-                 
+                    
             # lolPlugin = mplugin.getListOfLayouts().getPlugin("render")
             # if lolPlugin is None:
             #   print("there is no render info inside layout.")
@@ -494,7 +496,7 @@ class ExportSBML(WindowedPlugin):
 
                     handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
                     handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
-                     allReactions[i].sources[j],is_source=True)
+                        allReactions[i].sources[j],is_source=True)
                     cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
                     cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
@@ -520,7 +522,7 @@ class ExportSBML(WindowedPlugin):
 
                     handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
                     handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
-                     allReactions[i].targets[j],is_source=False)
+                        allReactions[i].targets[j],is_source=False)
                     cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
                     cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
@@ -565,10 +567,6 @@ class ExportSBML(WindowedPlugin):
             rInfo.setProgramName("RenderInformation")
             rInfo.setProgramVersion("1.0")
 
-            # add some colors
-            # color = rInfo.createColorDefinition()
-            # color.setId("black")
-            # color.setColorValue("#000000")
 
             if numCompartments != 0:  
                 for i in range(len(allcompartments)):
@@ -577,9 +575,8 @@ class ExportSBML(WindowedPlugin):
                         fill_color        = allcompartments[i].fill_color
                         border_color      = allcompartments[i].border_color
                         comp_border_width = allcompartments[i].border_width
-                        fill_color_str    = '#%02x%02x%02x' % (fill_color.r,fill_color.g,fill_color.b)
-                        border_color_str  = '#%02x%02x%02x' % (border_color.r,border_color.g,border_color.b)
-                    
+                        fill_color_str    = '#%02x%02x%02x%02x' % (fill_color.r,fill_color.g,fill_color.b,fill_color.a)
+                        border_color_str  = '#%02x%02x%02x%02x' % (border_color.r,border_color.g,border_color.b,border_color.a)
 
                         color = rInfo.createColorDefinition()
                         color.setId("comp_fill_color" + "_" + comp_id)
@@ -602,10 +599,8 @@ class ExportSBML(WindowedPlugin):
             else:
                 comp_border_width = 2.
                 #set default compartment with white color
-                #fill_color_str = '#00ffffff'
-                #border_color_str = '#00ffffff'
-                fill_color_str = '#ffffff'
-                border_color_str = '#ffffff'
+                fill_color_str = '#ffffffff'
+                border_color_str = '#ffffffff'
 
                 color = rInfo.createColorDefinition()
                 color.setId("comp_fill_color")
@@ -624,7 +619,7 @@ class ExportSBML(WindowedPlugin):
                 style.addId(comp_id)
                 rectangle = style.getGroup().createRectangle()
                 rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
-    
+
             for i in range(len(allNodes)):
                 node =  allNodes[i]
                 spec_id = node.id
@@ -632,22 +627,20 @@ class ExportSBML(WindowedPlugin):
                     primitive, _ = node.shape.items[0]
                     spec_fill_color   = primitive.fill_color
                     spec_border_color = primitive.border_color
-                    spec_fill_color_str   = '#%02x%02x%02x' % (spec_fill_color.r,spec_fill_color.g,spec_fill_color.b)
-                    spec_border_color_str = '#%02x%02x%02x' % (spec_border_color.r,spec_border_color.g,spec_border_color.b)
+                    spec_fill_color_str   = '#%02x%02x%02x%02x' % (spec_fill_color.r,spec_fill_color.g,spec_fill_color.b,spec_fill_color.a)
+                    spec_border_color_str = '#%02x%02x%02x%02x' % (spec_border_color.r,spec_border_color.g,spec_border_color.b,spec_border_color.a)
                     spec_border_width = primitive.border_width
                     primitive, _ = node.shape.text_item
                     text_font_size = primitive.font_size
                     font_color = primitive.font_color
-                    text_line_color_str =  '#%02x%02x%02x' % (font_color.r,font_color.g,font_color.b)
+                    text_line_color_str =  '#%02x%02x%02x%02x' % (font_color.r,font_color.g,font_color.b,font_color.a)
                 except:#text-only
                     #set default species/node with white color
-                    #spec_fill_color_str = '#00ffffff'
-                    #spec_border_color_str = '#00ffffff'
-                    spec_fill_color_str = 'ffffff'
-                    spec_border_color_str = 'ffffff'
+                    spec_fill_color_str = '#ffffffff'
+                    spec_border_color_str = '#ffffffff'
                     spec_border_width = 2.
                     text_font_size = 11
-                    text_line_color_str = '#000000'
+                    text_line_color_str = '#000000ff'
 
 
                 color = rInfo.createColorDefinition()
@@ -704,7 +697,7 @@ class ExportSBML(WindowedPlugin):
                 else: #rectangle shape_index = 0/text-only 5/demo-combo 7/others as default (rectangle)
                     rectangle = style.getGroup().createRectangle()
                     rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
-               
+                
                 style = rInfo.createStyle("textStyle")
                 style.getGroup().setStroke("text_line_color" + "_" + spec_id)
                 style.getGroup().setStrokeWidth(1.)
@@ -716,7 +709,7 @@ class ExportSBML(WindowedPlugin):
                 for i in range(len(allReactions)):
                     rxn_id = allReactions[i].id
                     reaction_fill_color     = allReactions[i].fill_color
-                    reaction_fill_color_str = '#%02x%02x%02x' % (reaction_fill_color.r,reaction_fill_color.g,reaction_fill_color.b)           
+                    reaction_fill_color_str = '#%02x%02x%02x%02x' % (reaction_fill_color.r,reaction_fill_color.g,reaction_fill_color.b,reaction_fill_color.a)           
                     reaction_line_thickness = allReactions[i].line_thickness
                     reaction_id = allReactions[i].id
 
