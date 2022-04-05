@@ -144,6 +144,7 @@ class IMPORTSBML(WindowedPlugin):
 
             shapeIdx = 0
 
+            
             #set the default values without render info:
             comp_fill_color = (158, 169, 255, 200)
             comp_border_color = (0, 29, 255, 255)
@@ -161,7 +162,7 @@ class IMPORTSBML(WindowedPlugin):
                 document = readSBMLFromString(sbmlStr)
                 model_layout = document.getModel()
                 mplugin = (model_layout.getPlugin("layout"))
-
+                
                 # Get the first Layout object via LayoutModelPlugin object.
                 #
                 # if mplugin is None:
@@ -240,7 +241,9 @@ class IMPORTSBML(WindowedPlugin):
                                 alignment_name = TextAlignment.CENTER
                                 position_name = TextPosition.IN_NODE
                                 specRefGlyph = reactionGlyph.getSpeciesReferenceGlyph(j)
-                                #specRefGlyph_id = specRefGlyph.getSpeciesReferenceGlyphId()
+                                #specRefGlyph_id = specRefGlyph.get
+                                # 
+                                # Id()
 
                                 curve = specRefGlyph.getCurve()                             
                                 for segment in curve.getListOfCurveSegments():
@@ -374,9 +377,9 @@ class IMPORTSBML(WindowedPlugin):
                         #print(reaction_mod_list)
                         #print(mod_specGlyph_list)
                         #print(spec_specGlyph_id_list)
-
                         rPlugin = layout.getPlugin("render")
                         if (rPlugin != None and rPlugin.getNumLocalRenderInformationObjects() > 0):
+                        #if rPlugin != None:
                             #wx.MessageBox("The diversity of each graphical object is not shown.", "Message", wx.OK | wx.ICON_INFORMATION)
                             info = rPlugin.getRenderInformation(0)
                             color_list = []
@@ -384,13 +387,18 @@ class IMPORTSBML(WindowedPlugin):
                             # spec_render = []
                             # rxn_render = []
                             # text_render = []
-                            for  j in range ( 0, info.getNumColorDefinitions()):
+                            # for j in range(0, info.getNumLineEndings()):
+                            #     LineEnding = info.getLineEndings(j)
+
+                            for  j in range (0, info.getNumColorDefinitions()):
                                 color = info.getColorDefinition(j)
                                 color_list.append([color.getId(),color.createValueString()])
 
                             for j in range (0, info.getNumStyles()):
                                 style = info.getStyle(j)
                                 group = style.getGroup()
+                                # for element in group.getListOfElements(): 
+                                #     print(element.getElementName(), element.getStroke())
                                 typeList = style.createTypeString()
                                 idList = style.createIdString()
                                 if 'COMPARTMENTGLYPH' in typeList:
@@ -438,7 +446,6 @@ class IMPORTSBML(WindowedPlugin):
                                             reaction_line_color = hex_to_rgb(color_list[k][1])
                                     reaction_line_width = group.getStrokeWidth()
                                     rxn_render.append([idList, reaction_line_color,reaction_line_width])
-                        #print(spec_render)
 
                 model = simplesbml.loadSBMLStr(sbmlStr)
 
@@ -686,12 +693,15 @@ class IMPORTSBML(WindowedPlugin):
                             center_handle = reaction_center_handle_list[i]
                             handles = [center_handle]
                             handles.extend(src_handle)
-                            handles.extend(dst_handle)                      
+                            handles.extend(dst_handle)
+                            # print("rcts:", src_corr)
+                            # print("prds:", dst_corr)                      
                             idx = api.add_reaction(net_index, id=temp_id, reactants=src_corr, products=dst_corr,
                             fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2],reaction_line_color[3]),
                             line_thickness=reaction_line_width, modifiers = mod)
                             api.update_reaction(net_index, idx, ratelaw = kinetics)
-                            handles_Vec2 = []          
+                            handles_Vec2 = []  
+                            #print(handles)        
                             for i in range(len(handles)):
                                 handles_Vec2.append(Vec2(handles[i][0],handles[i][1]))
                             api.update_reaction(net_index, idx, 
@@ -857,9 +867,9 @@ class IMPORTSBML(WindowedPlugin):
                             flag_add_rxn_err = 1
 
 
-                    # if flag_add_rxn_err == 1:
-                    #     wx.MessageBox("There are errors while loading this SBML file!", "Message", wx.OK | wx.ICON_INFORMATION)
-                    
+                        # if flag_add_rxn_err == 1:
+                        #     wx.MessageBox("There are errors while loading this SBML file!", "Message", wx.OK | wx.ICON_INFORMATION)
+                        
             except:
                 if showDialogues:
                     wx.MessageBox("Imported SBML file is invalid.", "Message", wx.OK | wx.ICON_INFORMATION)

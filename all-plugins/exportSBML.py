@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.6',
+        version='0.5.7',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -442,105 +442,218 @@ class ExportSBML(WindowedPlugin):
 
             # create the ReactionGlyphs and SpeciesReferenceGlyphs
             for i in range(numReactions):
-                reaction_id = allReactions[i].id
-                center_pos = allReactions[i].center_pos
-                centroid = api.compute_centroid(netIn, allReactions[i].sources, allReactions[i].targets)
-                try:
-                    center_value = [center_pos.x,center_pos.y]
-                except:
-                    center_value = [centroid.x,centroid.y]
-                
-                reactionGlyph = layout.createReactionGlyph()
-                reactionG_id = "RectionG_" + reaction_id
-                reactionGlyph.setId(reactionG_id)
-                reactionGlyph.setReactionId(reaction_id)
-                
-                reactionCurve = reactionGlyph.getCurve()
-                ls = reactionCurve.createLineSegment()
-                ls.setStart(Point(layoutns, center_value[0], center_value[1]))
-                ls.setEnd(Point(layoutns, center_value[0], center_value[1]))
+                if allReactions[i].using_bezier == True:
+                    reaction_id = allReactions[i].id
+                    center_pos = allReactions[i].center_pos
+                    centroid = api.compute_centroid(netIn, allReactions[i].sources, allReactions[i].targets)
+                    try:
+                        center_value = [center_pos.x,center_pos.y]
+                    except:
+                        center_value = [centroid.x,centroid.y]
+                    
+                    reactionGlyph = layout.createReactionGlyph()
+                    reactionG_id = "RectionG_" + reaction_id
+                    reactionGlyph.setId(reactionG_id)
+                    reactionGlyph.setReactionId(reaction_id)
+                    
+                    reactionCurve = reactionGlyph.getCurve()
+                    ls = reactionCurve.createLineSegment()
+                    ls.setStart(Point(layoutns, center_value[0], center_value[1]))
+                    ls.setEnd(Point(layoutns, center_value[0], center_value[1]))
 
-                rct = [] # id list of the rcts
-                prd = []
-                mod = []
-                rct_index = []
-                prd_index = []
-                mod_index = []
-                rct_num = len(allReactions[i].sources)
-                prd_num = len(allReactions[i].targets)
-                mod_num = len(allReactions[i].modifiers)
+                    rct = [] # id list of the rcts
+                    prd = []
+                    mod = []
+                    rct_index = []
+                    prd_index = []
+                    mod_index = []
+                    rct_num = len(allReactions[i].sources)
+                    prd_num = len(allReactions[i].targets)
+                    mod_num = len(allReactions[i].modifiers)
 
-                for j in range(rct_num):
-                    rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
-                    rct_index.append(get_node_by_index(netIn, allReactions[i].sources[j]).index)
-                for j in range(prd_num):
-                    prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
-                    prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
-                for j in range(mod_num):
-                    mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
-                    mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
-                for j in range(rct_num):
-                    ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
+                    for j in range(rct_num):
+                        rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
+                        rct_index.append(get_node_by_index(netIn, allReactions[i].sources[j]).index)
+                    for j in range(prd_num):
+                        prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                        prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
+                    for j in range(mod_num):
+                        mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                        mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
+                    for j in range(rct_num):
+                        ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
 
-                    speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
-                    specsRefG_id = "SpecRefG_" + reaction_id + "_rct" + str(j)
-                    specG_id = "SpecG_" + rct[j] + '_idx_' + str(rct_index[j])
-                    speciesReferenceGlyph.setId(specsRefG_id)
-                    speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
-                    speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
-                    speciesReferenceGlyph.setRole(SPECIES_ROLE_SUBSTRATE)
-                    speciesReferenceCurve = speciesReferenceGlyph.getCurve()
-                    cb = speciesReferenceCurve.createCubicBezier()
+                        speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                        specsRefG_id = "SpecRefG_" + reaction_id + "_rct" + str(j)
+                        specG_id = "SpecG_" + rct[j] + '_idx_' + str(rct_index[j])
+                        speciesReferenceGlyph.setId(specsRefG_id)
+                        speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                        speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                        speciesReferenceGlyph.setRole(SPECIES_ROLE_SUBSTRATE)
+                        speciesReferenceCurve = speciesReferenceGlyph.getCurve()
+                        cb = speciesReferenceCurve.createCubicBezier()
 
-                    cb.setStart(Point(layoutns, center_value[0], center_value[1]))
+                        cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                    handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
-                    handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
-                        allReactions[i].sources[j],is_source=True)
-                    cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
-                    cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
+                        handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                        handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                            allReactions[i].sources[j],is_source=True)
+                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                        cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
-                    pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
-                    pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
-                    width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
-                    height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
-                    cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
+                        pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
+                        pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
+                        width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
+                        height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
+                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
+                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
 
-                for j in range(prd_num):
-                    ref_id = "SpecRef_" + reaction_id + "_prd" + str(j)
-                    speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
-                    specsRefG_id = "SpecRefG_" + reaction_id + "_prd" + str(j)
-                    specG_id = "SpecG_" + prd[j]  + '_idx_' + str(prd_index[j])
-                    speciesReferenceGlyph.setId(specsRefG_id)
-                    speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
-                    speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
-                    speciesReferenceGlyph.setRole(SPECIES_ROLE_PRODUCT)
+                    for j in range(prd_num):
+                        ref_id = "SpecRef_" + reaction_id + "_prd" + str(j)
+                        speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                        specsRefG_id = "SpecRefG_" + reaction_id + "_prd" + str(j)
+                        specG_id = "SpecG_" + prd[j]  + '_idx_' + str(prd_index[j])
+                        speciesReferenceGlyph.setId(specsRefG_id)
+                        speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                        speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                        speciesReferenceGlyph.setRole(SPECIES_ROLE_PRODUCT)
 
-                    speciesReferenceCurve = speciesReferenceGlyph.getCurve()
-                    cb = speciesReferenceCurve.createCubicBezier()
-                    cb.setStart(Point(layoutns, center_value[0], center_value[1]))
+                        speciesReferenceCurve = speciesReferenceGlyph.getCurve()
+                        cb = speciesReferenceCurve.createCubicBezier()
+                        cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                    handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
-                    handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
-                        allReactions[i].targets[j],is_source=False)
-                    cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
-                    cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
+                        handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                        handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                            allReactions[i].targets[j],is_source=False)
+                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                        cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
-                    pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
-                    pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
-                    width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
-                    height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
-                    cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
+                        pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
+                        pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
+                        width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
+                        height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
+                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
+                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
 
-                for j in range(mod_num):
-                    ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
-                    speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
-                    specsRefG_id = "SpecRefG_" + reaction_id + "_mod" + str(j)
-                    specG_id = "SpecG_" + mod[j]  + '_idx_' + str(mod_index[j])
-                    speciesReferenceGlyph.setId(specsRefG_id)
-                    speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
-                    speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
-                    speciesReferenceGlyph.setRole(SPECIES_ROLE_MODIFIER)
+                    for j in range(mod_num):
+                        ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
+                        speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                        specsRefG_id = "SpecRefG_" + reaction_id + "_mod" + str(j)
+                        specG_id = "SpecG_" + mod[j]  + '_idx_' + str(mod_index[j])
+                        speciesReferenceGlyph.setId(specsRefG_id)
+                        speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                        speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                        speciesReferenceGlyph.setRole(SPECIES_ROLE_MODIFIER)
+
+                else:
+                    reaction_id = allReactions[i].id
+                    center_pos = allReactions[i].center_pos
+                    centroid = api.compute_centroid(netIn, allReactions[i].sources, allReactions[i].targets)
+                    handles = api.default_handle_positions(netIn,i)
+
+                    try:
+                        center_value = [center_pos.x,center_pos.y]
+                    except:
+                        center_value = [centroid.x,centroid.y]
+
+                    
+                    reactionGlyph = layout.createReactionGlyph()
+                    reactionG_id = "RectionG_" + reaction_id
+                    reactionGlyph.setId(reactionG_id)
+                    reactionGlyph.setReactionId(reaction_id)
+                    
+                    reactionCurve = reactionGlyph.getCurve()
+                    ls = reactionCurve.createLineSegment()
+                    ls.setStart(Point(layoutns, center_value[0], center_value[1]))
+                    ls.setEnd(Point(layoutns, center_value[0], center_value[1]))
+
+                    rct = [] # id list of the rcts
+                    prd = []
+                    mod = []
+                    rct_index = []
+                    prd_index = []
+                    mod_index = []
+                    rct_num = len(allReactions[i].sources)
+                    prd_num = len(allReactions[i].targets)
+                    mod_num = len(allReactions[i].modifiers)
+
+                    for j in range(rct_num):
+                        rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
+                        rct_index.append(get_node_by_index(netIn, allReactions[i].sources[j]).index)
+                    for j in range(prd_num):
+                        prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                        prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
+                    for j in range(mod_num):
+                        mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                        mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
+                    for j in range(rct_num):
+                        ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
+
+                        speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                        specsRefG_id = "SpecRefG_" + reaction_id + "_rct" + str(j)
+                        specG_id = "SpecG_" + rct[j] + '_idx_' + str(rct_index[j])
+                        speciesReferenceGlyph.setId(specsRefG_id)
+                        speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                        speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                        speciesReferenceGlyph.setRole(SPECIES_ROLE_SUBSTRATE)
+                        speciesReferenceCurve = speciesReferenceGlyph.getCurve()
+                        cb = speciesReferenceCurve.createCubicBezier()
+
+                        cb.setStart(Point(layoutns, center_value[0], center_value[1]))
+
+                        # handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                        # handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                        #     allReactions[i].sources[j],is_source=True)
+                        handle1 = handles[1+j]
+                        handle2 = handles[1+j]
+                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                        cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
+
+                        pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
+                        pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
+                        width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
+                        height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
+                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
+                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+
+                    for j in range(prd_num):
+                        ref_id = "SpecRef_" + reaction_id + "_prd" + str(j)
+                        speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                        specsRefG_id = "SpecRefG_" + reaction_id + "_prd" + str(j)
+                        specG_id = "SpecG_" + prd[j]  + '_idx_' + str(prd_index[j])
+                        speciesReferenceGlyph.setId(specsRefG_id)
+                        speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                        speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                        speciesReferenceGlyph.setRole(SPECIES_ROLE_PRODUCT)
+
+                        speciesReferenceCurve = speciesReferenceGlyph.getCurve()
+                        cb = speciesReferenceCurve.createCubicBezier()
+                        cb.setStart(Point(layoutns, center_value[0], center_value[1]))
+
+                        # handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                        # handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
+                        #     allReactions[i].targets[j],is_source=False)
+                        handle1 = handles[1+rct_num+j]
+                        handle2 = handles[1+rct_num+j]
+                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                        cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
+
+                        pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
+                        pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
+                        width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
+                        height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
+                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
+                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+
+                    for j in range(mod_num):
+                        ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
+                        speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
+                        specsRefG_id = "SpecRefG_" + reaction_id + "_mod" + str(j)
+                        specG_id = "SpecG_" + mod[j]  + '_idx_' + str(mod_index[j])
+                        speciesReferenceGlyph.setId(specsRefG_id)
+                        speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
+                        speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
+                        speciesReferenceGlyph.setRole(SPECIES_ROLE_MODIFIER)
 
             sbmlStr_layout = writeSBMLToString(document) #sbmlStr is w/o layout info 
 
