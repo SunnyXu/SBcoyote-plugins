@@ -26,7 +26,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.5.7',
+        version='0.5.8',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -787,7 +787,10 @@ class IMPORTSBML(WindowedPlugin):
                         dst = []
                         mod = []
                         temp_id = Rxns_ids[i]
-                        kinetics = model.getRateLaw(i)
+                        try: 
+                            kinetics = model.getRateLaw(i)
+                        except:
+                            kinetics = ""
                         rct_num = model.getNumReactants(i)
                         prd_num = model.getNumProducts(i)
                         mod_num = model.getNumModifiers(temp_id)
