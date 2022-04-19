@@ -26,7 +26,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.5.8',
+        version='0.5.9',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -216,7 +216,8 @@ class IMPORTSBML(WindowedPlugin):
                             for segment in curve.getListOfCurveSegments():
                                 center_x = segment.getStart().getXOffset()
                                 center_y = segment.getStart().getYOffset()
-                                reaction_center_list.append([center_x, center_y])
+                                center_pt = [center_x, center_y]
+                                reaction_center_list.append(center_pt)
                             reaction_id = reactionGlyph.getReactionId()
                             reaction_id_list.append(reaction_id)
                             reaction = model_layout.getReaction(reaction_id)
@@ -237,28 +238,37 @@ class IMPORTSBML(WindowedPlugin):
                             prd_specGlyph_handles_temp_list = []  
                             mod_specGlyph_temp_list = []
 
+                            center_handle = []
                             for j in range(numSpecRefGlyphs):
                                 alignment_name = TextAlignment.CENTER
                                 position_name = TextPosition.IN_NODE
                                 specRefGlyph = reactionGlyph.getSpeciesReferenceGlyph(j)
-                                #specRefGlyph_id = specRefGlyph.get
-                                # 
-                                # Id()
-
-                                curve = specRefGlyph.getCurve()                             
+                                #specRefGlyph_id = specRefGlyph.getId()
+                                curve = specRefGlyph.getCurve() 
+                                spec_handle = []                             
                                 for segment in curve.getListOfCurveSegments():
-                                        # print(segment.getStart().getXOffset())
-                                        # print(segment.getStart().getYOffset())
-                                        # print(segment.getEnd().getXOffset())
-                                        # print(segment.getEnd().getYOffset())
-                                        try:
-                                            center_handle = [segment.getBasePoint1().getXOffset(), 
+                                    line_start_x = segment.getStart().getXOffset()
+                                    line_start_y = segment.getStart().getYOffset()
+                                    line_end_x = segment.getEnd().getXOffset()
+                                    line_end_y = segment.getEnd().getYOffset()
+                                    line_start_pt =  [line_start_x, line_start_y]
+                                    line_end_pt = [line_end_x, line_end_y]
+                                    try:
+                                        if math.dist(line_start_pt, center_pt) <= math.dist(line_end_pt, center_pt):
+                                            #line starts from center
+                                            center_handle_candidate = [segment.getBasePoint1().getXOffset(), 
                                                         segment.getBasePoint1().getYOffset()]                                
                                             spec_handle = [segment.getBasePoint2().getXOffset(),
                                                     segment.getBasePoint2().getYOffset()]
-                                        except:
-                                            center_handle = []
-                                            spec_handle = []
+                                        else:
+                                            #line does not start from center
+                                            spec_handle = [segment.getBasePoint1().getXOffset(), 
+                                                        segment.getBasePoint1().getYOffset()]                                
+                                            center_handle_candidate = [segment.getBasePoint2().getXOffset(),
+                                                    segment.getBasePoint2().getYOffset()]
+                                    except:
+                                        center_handle_candidate = []
+                                        spec_handle = []
 
                                 role = specRefGlyph.getRoleString()
                                 specGlyph_id = specRefGlyph.getSpeciesGlyphId()
@@ -313,6 +323,8 @@ class IMPORTSBML(WindowedPlugin):
 
                                 if role == "substrate": #it is a rct
                                     #rct_specGlyph_temp_list.append(specGlyph_id)
+                                    if center_handle == []:
+                                        center_handle.append(center_handle_candidate)
                                     rct_specGlyph_handles_temp_list.append([specGlyph_id,spec_handle])
                                 elif role == "product": #it is a prd
                                     #prd_specGlyph_temp_list.append(specGlyph_id)
@@ -321,7 +333,7 @@ class IMPORTSBML(WindowedPlugin):
                                     mod_specGlyph_temp_list.append(specGlyph_id)
                             #rct_specGlyph_list.append(rct_specGlyph_temp_list)
                             #prd_specGlyph_list.append(prd_specGlyph_temp_list)
-                            reaction_center_handle_list.append(center_handle)
+                            reaction_center_handle_list.append(center_handle[0])
                             rct_specGlyph_handle_list.append(rct_specGlyph_handles_temp_list)
                             prd_specGlyph_handle_list.append(prd_specGlyph_handles_temp_list)    
                             mod_specGlyph_list.append(mod_specGlyph_temp_list)
@@ -643,36 +655,74 @@ class IMPORTSBML(WindowedPlugin):
                         #         if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
                         #             prd_idx = nodeIdx_specGlyph_whole_list[k][0]
                         #     dst.append(prd_idx)
-
-                        for j in range(rct_num):
-                            temp_specGlyph_id = rct_specGlyph_handle_list[i][j][0]
-                            for k in range(numSpec_in_reaction):
-                                if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
-                                    rct_idx = nodeIdx_specGlyph_whole_list[k][0]
-                            src.append(rct_idx)
-                            src_handle.append(rct_specGlyph_handle_list[i][j][1])
-
-                        for j in range(prd_num):
-                            temp_specGlyph_id = prd_specGlyph_handle_list[i][j][0]
-                            for k in range(numSpec_in_reaction):
-                                if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
-                                    prd_idx = nodeIdx_specGlyph_whole_list[k][0]
-                            dst.append(prd_idx)
-                            dst_handle.append(prd_specGlyph_handle_list[i][j][1])
-
-                        for j in range(mod_num):
-                            if len(mod_specGlyph_list[i]) != 0:
-                                temp_specGlyph_id = mod_specGlyph_list[i][j]
+                        
+                        if rct_num != 0 and prd_num != 0:
+                            for j in range(rct_num):
+                                temp_specGlyph_id = rct_specGlyph_handle_list[i][j][0]
                                 for k in range(numSpec_in_reaction):
                                     if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
-                                        mod_idx = nodeIdx_specGlyph_whole_list[k][0]
-                                mod.append(mod_idx)
-                            else:
+                                        rct_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                src.append(rct_idx)
+                                src_handle.append(rct_specGlyph_handle_list[i][j][1])
+
+                            for j in range(prd_num):
+                                temp_specGlyph_id = prd_specGlyph_handle_list[i][j][0]
+                                for k in range(numSpec_in_reaction):
+                                    if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
+                                        prd_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                dst.append(prd_idx)
+                                dst_handle.append(prd_specGlyph_handle_list[i][j][1])
+
+                            for j in range(mod_num):
+                                if len(mod_specGlyph_list[i]) != 0:
+                                    temp_specGlyph_id = mod_specGlyph_list[i][j]
+                                    for k in range(numSpec_in_reaction):
+                                        if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
+                                            mod_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                    mod.append(mod_idx)
+                                else:
+                                    for k in range(len(spec_specGlyph_id_list)):
+                                        if reaction_mod_list[i][j] == spec_specGlyph_id_list[k][0]:
+                                            temp_specGlyph_id = spec_specGlyph_id_list[k][1]
+                                    for k in range(numSpec_in_reaction):
+                                        if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
+                                            mod_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                    mod.append(mod_idx)
+                        else:
+                            rct_num = model.getNumReactants(i)
+                            prd_num = model.getNumProducts(i)
+                            mod_num = model.getNumModifiers(temp_id)
+                    
+                            for j in range(rct_num):
+                                rct_id = model.getReactant(temp_id,j)
                                 for k in range(len(spec_specGlyph_id_list)):
-                                    if reaction_mod_list[i][j] == spec_specGlyph_id_list[k][0]:
-                                        temp_specGlyph_id = spec_specGlyph_id_list[k][1]
+                                    if spec_specGlyph_id_list[k][0] == rct_id:
+                                        tempGlyph_id = spec_specGlyph_id_list[k][1]
                                 for k in range(numSpec_in_reaction):
-                                    if temp_specGlyph_id == nodeIdx_specGlyph_whole_list[k][1]:
+                                    if nodeIdx_specGlyph_whole_list[k][1] == tempGlyph_id:
+                                        rct_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                src.append(rct_idx)
+                                #src_handle.append(rct_specGlyph_handle_list[i][j][1])
+
+                            for j in range(prd_num):
+                                prd_id = model.getProduct(temp_id,j)
+                                for k in range(len(spec_specGlyph_id_list)):
+                                    if spec_specGlyph_id_list[k][0] == prd_id:
+                                        tempGlyph_id = spec_specGlyph_id_list[k][1]
+                                for k in range(numSpec_in_reaction):
+                                    if nodeIdx_specGlyph_whole_list[k][1] == tempGlyph_id:
+                                        prd_idx = nodeIdx_specGlyph_whole_list[k][0]
+                                dst.append(prd_idx)
+                                #dst_handle.append(prd_specGlyph_handle_list[i][j][1])
+
+                            modifiers = model.getListOfModifiers(temp_id)
+                            for j in range(mod_num):
+                                mod_id = modifiers[j]
+                                for k in range(len(spec_specGlyph_id_list)):
+                                    if spec_specGlyph_id_list[k][0] == mod_id:
+                                        tempGlyph_id = spec_specGlyph_id_list[k][1]
+                                for k in range(numSpec_in_reaction):
+                                    if nodeIdx_specGlyph_whole_list[k][1] == tempGlyph_id:
                                         mod_idx = nodeIdx_specGlyph_whole_list[k][0]
                                 mod.append(mod_idx)
 
@@ -691,7 +741,10 @@ class IMPORTSBML(WindowedPlugin):
 
                             center_position = reaction_center_list[i]
                             center_handle = reaction_center_handle_list[i]
-                            handles = [center_handle]
+                            if center_handle != []:
+                                handles = [center_handle]
+                            else:
+                                handles = [center_position]
                             handles.extend(src_handle)
                             handles.extend(dst_handle)
                             # print("rcts:", src_corr)
@@ -701,13 +754,13 @@ class IMPORTSBML(WindowedPlugin):
                             line_thickness=reaction_line_width, modifiers = mod)
                             api.update_reaction(net_index, idx, ratelaw = kinetics)
                             handles_Vec2 = []  
-                            #print(handles)        
-                            for i in range(len(handles)):
-                                handles_Vec2.append(Vec2(handles[i][0],handles[i][1]))
-                            api.update_reaction(net_index, idx, 
-                            center_pos = Vec2(center_position[0],center_position[1]), 
-                            handle_positions=handles_Vec2, 
-                            fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2],reaction_line_color[3]))
+                            if len(handles) >= 3:      
+                                for i in range(len(handles)):
+                                    handles_Vec2.append(Vec2(handles[i][0],handles[i][1]))
+                                api.update_reaction(net_index, idx, 
+                                center_pos = Vec2(center_position[0],center_position[1]), 
+                                handle_positions=handles_Vec2, 
+                                fill_color=api.Color(reaction_line_color[0],reaction_line_color[1],reaction_line_color[2],reaction_line_color[3]))
 
                         except: #There is no info about the center/handle positions, so set as default 
                             src_corr = []

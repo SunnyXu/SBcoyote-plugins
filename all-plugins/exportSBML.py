@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.7',
+        version='0.5.8',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -493,21 +493,20 @@ class ExportSBML(WindowedPlugin):
                         speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                         cb = speciesReferenceCurve.createCubicBezier()
 
-                        cb.setStart(Point(layoutns, center_value[0], center_value[1]))
-
                         handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
                         handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
                             allReactions[i].sources[j],is_source=True)
-                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
-                        cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                         pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
                         pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
                         width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
                         height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
-                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
-                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
-
+                        
+                        cb.setStart(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+                        cb.setBasePoint1(Point(layoutns, handle2.x, handle2.y))
+                        cb.setBasePoint2(Point(layoutns, handle1.x, handle1.y))
+                        cb.setEnd(Point(layoutns, center_value[0], center_value[1]))
+                        
                     for j in range(prd_num):
                         ref_id = "SpecRef_" + reaction_id + "_prd" + str(j)
                         speciesReferenceGlyph = reactionGlyph.createSpeciesReferenceGlyph()
@@ -522,17 +521,18 @@ class ExportSBML(WindowedPlugin):
                         cb = speciesReferenceCurve.createCubicBezier()
                         cb.setStart(Point(layoutns, center_value[0], center_value[1]))
 
-                        handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                        handle_center = api.get_reaction_center_handle(netIn, allReactions[i].index)
+                        handle1 = [2.*center_value[0]-handle_center.x, 2.*center_value[1]-handle_center.y]
+                        
                         handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
                             allReactions[i].targets[j],is_source=False)
-                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                        cb.setBasePoint1(Point(layoutns, handle1[0], handle1[1]))
                         cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                         pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
                         pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
                         width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
                         height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
-                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
                         cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
 
                     for j in range(mod_num):
@@ -598,23 +598,21 @@ class ExportSBML(WindowedPlugin):
                         speciesReferenceGlyph.setRole(SPECIES_ROLE_SUBSTRATE)
                         speciesReferenceCurve = speciesReferenceGlyph.getCurve()
                         cb = speciesReferenceCurve.createCubicBezier()
-
-                        cb.setStart(Point(layoutns, center_value[0], center_value[1]))
-
                         # handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
                         # handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
                         #     allReactions[i].sources[j],is_source=True)
-                        handle1 = handles[1+j]
+                        handle1 = handles[0]
                         handle2 = handles[1+j]
-                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
-                        cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
-
+                        
                         pos_x = get_node_by_index(netIn,allReactions[i].sources[j]).position.x
                         pos_y = get_node_by_index(netIn,allReactions[i].sources[j]).position.y
                         width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
                         height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
-                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
-                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+
+                        cb.setStart(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+                        cb.setBasePoint1(Point(layoutns, handle2.x, handle2.y))
+                        cb.setBasePoint2(Point(layoutns, handle1.x, handle1.y))
+                        cb.setEnd(Point(layoutns, center_value[0], center_value[1]))
 
                     for j in range(prd_num):
                         ref_id = "SpecRef_" + reaction_id + "_prd" + str(j)
@@ -633,16 +631,16 @@ class ExportSBML(WindowedPlugin):
                         # handle1 = api.get_reaction_center_handle(netIn, allReactions[i].index)
                         # handle2 = api.get_reaction_node_handle(netIn, allReactions[i].index,
                         #     allReactions[i].targets[j],is_source=False)
-                        handle1 = handles[1+rct_num+j]
+
+                        handle1 = [2.*center_value[0]-handles[0].x, 2.*center_value[1]-handles[0].y]
                         handle2 = handles[1+rct_num+j]
-                        cb.setBasePoint1(Point(layoutns, handle1.x, handle1.y))
+                        cb.setBasePoint1(Point(layoutns, handle1[0], handle1[1]))
                         cb.setBasePoint2(Point(layoutns, handle2.x, handle2.y))
 
                         pos_x = get_node_by_index(netIn, allReactions[i].targets[j]).position.x
                         pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
                         width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
                         height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
-                        #cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y - 0.5*height))
                         cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
 
                     for j in range(mod_num):
