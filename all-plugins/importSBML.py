@@ -26,7 +26,7 @@ class IMPORTSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ImportSBML',
         author='Jin Xu',
-        version='0.5.9',
+        version='0.6.0',
         short_desc='Import SBML.',
         long_desc='Import an SBML String from a file and visualize it as a network on canvas.',
         category=PluginCategory.ANALYSIS
@@ -333,7 +333,11 @@ class IMPORTSBML(WindowedPlugin):
                                     mod_specGlyph_temp_list.append(specGlyph_id)
                             #rct_specGlyph_list.append(rct_specGlyph_temp_list)
                             #prd_specGlyph_list.append(prd_specGlyph_temp_list)
-                            reaction_center_handle_list.append(center_handle[0])
+                            try:
+                                reaction_center_handle_list.append(center_handle[0])
+                            except:
+                                #raise Exception("Can not find center handle information to process.")
+                                reaction_center_handle_list.append([])
                             rct_specGlyph_handle_list.append(rct_specGlyph_handles_temp_list)
                             prd_specGlyph_handle_list.append(prd_specGlyph_handles_temp_list)    
                             mod_specGlyph_list.append(mod_specGlyph_temp_list)
