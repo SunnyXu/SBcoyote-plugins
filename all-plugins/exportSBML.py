@@ -925,6 +925,7 @@ class ExportSBML(WindowedPlugin):
                 spec_id = node.id
                 spec_index = node.index
                 specG_id = "SpecG_"  + spec_id + '_idx_' + str(spec_index)
+                textG_id = "TextG_" + spec_id + '_idx_' + str(spec_index)
                 #print("id:", spec_id)
                 #print("shape_index", node.shape)
                 try: 
@@ -938,6 +939,7 @@ class ExportSBML(WindowedPlugin):
                     text_font_size = primitive.font_size
                     font_color = primitive.font_color
                     text_line_color_str =  '#%02x%02x%02x%02x' % (font_color.r,font_color.g,font_color.b,font_color.a)
+
                 except:#text-only
                     #set default species/node with white color
                     spec_fill_color_str = '#ffffffff'
