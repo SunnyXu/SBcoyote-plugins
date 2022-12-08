@@ -25,7 +25,7 @@ class SimulateModel(WindowedPlugin):
     metadata = PluginMetadata(
         name='Simulate Model',
         author='Claire Samuels',
-        version='0.0.7',
+        version='1.0.0',
         short_desc='Simulate a reaction network.',
         long_desc='Simulate a reaction network using roadrunner and visualize the results.',
         category=PluginCategory.ANALYSIS

@@ -1,7 +1,7 @@
 '''
 Import a directory of SBML and Antimony files, visualize reactions, capture and save images.
 
-Version 0.0.4: Author: Claire Samuels (2021)
+Version 1.0.0: Author: Claire Samuels (2021)
 '''
 
 try:
@@ -21,7 +21,7 @@ class CaptureSBML(WindowedPlugin):
       metadata = PluginMetadata(
         name='CaptureSBML',
         author='Claire Samuels',
-        version='0.0.4',
+        version='1.0.0',
         short_desc='Visualize and capture SBML or Antimony.',
         long_desc='Import a directory of SBML and Antimony files, visualize reactions, capture and save images.',
         category=PluginCategory.ANALYSIS

@@ -1,6 +1,6 @@
 """
 Export the network on canvas to an SBML string as save it as a file.
-Version 0.02: Author: Jin Xu (2021)
+Version 1.0.0: Author: Jin Xu (2021)
 """
 
 
@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='0.5.8',
+        version='1.0.0',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -71,23 +71,24 @@ class ExportSBML(WindowedPlugin):
         Export the Network on canvas and save the SBML string to a file.
         """
         sbmlStr_layout_render = self.NetworkToSBML()
-        self.SBMLText.SetValue(sbmlStr_layout_render)
-
-        #save to local
-        self.dirname=""  #set directory name to blank 
-        dlg = wx.FileDialog(self.window, "Save As", self.dirname, wildcard="SBML files (*.xml)|*.xml", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        if dlg.ShowModal() == wx.ID_OK:
-            # Grab the content to be saved
-            itcontains = self.SBMLText.GetValue()
-            # Open the file for write, write, close
-            self.filename=dlg.GetFilename()
-            self.dirname=dlg.GetDirectory()
-            filehandle=open(os.path.join(self.dirname, self.filename),'w')
-            filehandle.write(itcontains)
-            filehandle.close()
-        # Get rid of the dialog to keep things tidy
-        dlg.Destroy()
-
+        try:
+            self.SBMLText.SetValue(sbmlStr_layout_render)
+            #save to local
+            self.dirname=""  #set directory name to blank 
+            dlg = wx.FileDialog(self.window, "Save As", self.dirname, wildcard="SBML files (*.xml)|*.xml", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            if dlg.ShowModal() == wx.ID_OK:
+                # Grab the content to be saved
+                itcontains = self.SBMLText.GetValue()
+                # Open the file for write, write, close
+                self.filename=dlg.GetFilename()
+                self.dirname=dlg.GetDirectory()
+                filehandle=open(os.path.join(self.dirname, self.filename),'w')
+                filehandle.write(itcontains)
+                filehandle.close()
+            # Get rid of the dialog to keep things tidy
+            dlg.Destroy()
+        except:
+            wx.MessageBox("No valid SBML string to save!", "Error")
 
 
     def NetworkToSBML(self):
@@ -108,6 +109,71 @@ class ExportSBML(WindowedPlugin):
         #     [res.append(x) for x in list_update if x not in res and not x.isdigit()]
         #     return res
 
+        
+        def _cross_point(arcCenter, c2, s2):
+            """
+            Get the cross point of a point and a rectangle with position(top left-hand corner) and size 
+            given.
+
+            Args:  
+                arcCenter:  1*2 matrix-position of the point.
+                c2: 1*2 matrix-position of the rectangle (top left-hand corner).
+                s2: 1*2 matrix-size of the rectangle.
+            """
+            pt_center = [c2[0]+.5*s2[0], c2[1]+.5*s2[1]]
+            pt_up_left    = c2
+            pt_up_right   = [c2[0]+s2[0], c2[1]]
+            pt_down_left  = [c2[0], c2[1]+s2[1]]
+            pt_down_right = [c2[0]+s2[0], c2[1]+s2[1]]
+
+            def _line_intersection(line1, line2):
+                """
+
+                Args:  
+                    line1: list of 1*2 matrix-two points to represent line1.
+                    line2: list of 1*2 matrix-two points to represent line2.
+                Returns:
+                    [x,y]: 1*2 matrix-the point position of the crossed two lines.
+                """
+                xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+                ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+
+                def _det(a, b):
+                    return a[0] * b[1] - a[1] * b[0]
+
+                div = _det(xdiff, ydiff)
+                if div == 0:
+                    raise Exception('lines do not intersect1')
+                d = (_det(*line1), _det(*line2))
+                x = round(_det(d, xdiff) / div,2)
+                y = round(_det(d, ydiff) / div,2)
+                if round((x-line1[0][0])*(x-line1[1][0]),2)<=0 and round((x-line2[0][0])*(x-line2[1][0]),2)<=0 \
+                and round((y-line1[0][1])*(y-line1[1][1]),2)<=0 and round((y-line2[0][1])*(y-line2[1][1]),2)<=0:
+                    return [x, y]
+                else:
+                    raise Exception('lines do not intersect2')
+            try:
+                [x,y] = _line_intersection([arcCenter, pt_center], [pt_up_left, pt_down_left])
+                return [x,y]
+            except:
+                pass
+
+            try:
+                [x,y] = _line_intersection([arcCenter, pt_center], [pt_up_left, pt_up_right])
+                return [x,y]
+            except:
+                pass
+            try:
+                [x,y] = _line_intersection([arcCenter, pt_center], [pt_down_left, pt_down_right])
+                return [x,y]
+            except:
+                pass
+            try:
+                [x,y] = _line_intersection([arcCenter, pt_center], [pt_up_right, pt_down_right])
+                return [x,y]
+            except:
+                pass
+
 
         isReversible = True
         netIn = 0
@@ -118,6 +184,7 @@ class ExportSBML(WindowedPlugin):
            wx.MessageBox("Please import a network with at least one node on canvas", "Message", wx.OK | wx.ICON_INFORMATION)
         else:
             allNodes = api.get_nodes(netIn)
+            
             allReactions = api.get_reactions(netIn)
             allcompartments = api.get_compartments(netIn)
             #print("allNodes:", allNodes)
@@ -143,7 +210,7 @@ class ExportSBML(WindowedPlugin):
 
             # create the Model
             model = document.createModel()
-            model.setId("Model_layout")
+            model.setId("COYOTE_model")
             document.setModel(model)
 
             # create the Compartment and species
@@ -210,8 +277,7 @@ class ExportSBML(WindowedPlugin):
                             species.setBoundaryCondition(True)
                             species.setConstant(True)
             # create reactions:
-            parameter_id_value_dict_self_pre = {}
-            
+            parameter_id_value_dict_self_pre = {}  
             
             for i in range(numReactions):
                 reaction_id = allReactions[i].id
@@ -230,23 +296,23 @@ class ExportSBML(WindowedPlugin):
 
                 kinetic_law_from_user = allReactions[i].rate_law
                 
-                if kinetic_law_from_user == '':
-                    kinetic_law = ''
-                    kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
-                    parameter_id_value_dict_self_pre['E' + str(i)] = 0.1
-                    parameter_id_value_dict_self_pre['k' + str(i)] = 0.1
+                # if kinetic_law_from_user == '':
+                kinetic_law = ''
+                kinetic_law = kinetic_law + 'E' + str (i) + '*(k' + str (i) 
+                parameter_id_value_dict_self_pre['E' + str(i)] = 0.1
+                parameter_id_value_dict_self_pre['k' + str(i)] = 0.1
 
-                    for j in range(rct_num):
-                        kinetic_law = kinetic_law + '*' + rct[j]
-                        
-                    if isReversible:
-                        kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
-                        parameter_id_value_dict_self_pre['k' + str (i) + 'r'] = 0.1
-                        for j in range(prd_num):
-                            kinetic_law = kinetic_law + '*' + prd[j]
-                    kinetic_law = kinetic_law + ')'
-                else:
-                    kinetic_law = kinetic_law_from_user
+                for j in range(rct_num):
+                    kinetic_law = kinetic_law + '*' + rct[j]
+                    
+                if isReversible:
+                    kinetic_law = kinetic_law + ' - k' + str (i) + 'r'
+                    parameter_id_value_dict_self_pre['k' + str (i) + 'r'] = 0.1
+                    for j in range(prd_num):
+                        kinetic_law = kinetic_law + '*' + prd[j]
+                kinetic_law = kinetic_law + ')'
+                # else:
+                #     kinetic_law = kinetic_law_from_user
 
                 reaction = model.createReaction()
                 reaction.setId(allReactions[i].id)
@@ -325,7 +391,7 @@ class ExportSBML(WindowedPlugin):
             # Creates a Layout object via LayoutModelPlugin object.
             #
             layout = mplugin.createLayout()
-            layout.setId("Layout_1")
+            layout.setId("COYOTO_layout")
             layout.setDimensions(Dimensions(layoutns, 800.0, 800.0))
             # random network (40+800x, 40+800y)
 
@@ -365,6 +431,7 @@ class ExportSBML(WindowedPlugin):
                     textGlyph = layout.createTextGlyph()
                     textG_id = "TextG_" + spec_id + '_idx_' + str(spec_index)
                     textGlyph.setId(textG_id)
+                    textGlyph.setText(spec_id)
                     bb_id  = "bb_spec_text_" + spec_id + '_idx_' + str(spec_index)
                     # if spec_shapeIdx == 6: #rough by eyes
                     #     pos_x_text = pos_x + 50
@@ -383,7 +450,7 @@ class ExportSBML(WindowedPlugin):
                     if position_value == 3: #BELOW
                         pos_y_text = pos_y + height 
                     textGlyph.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x_text, pos_y_text, width, height))
-                    textGlyph.setOriginOfTextId(specG_id)
+                    #textGlyph.setOriginOfTextId(specG_id)
                     textGlyph.setGraphicalObjectId(specG_id)
             else:#there is no compartment  
                 comp_id= "_compartment_default_"
@@ -419,6 +486,7 @@ class ExportSBML(WindowedPlugin):
                     textGlyph = layout.createTextGlyph()
                     textG_id = "TextG_" + spec_id + '_idx_' + str(spec_index)
                     textGlyph.setId(textG_id)
+                    textGlyph.setText(spec_id)
                     # if spec_shapeIdx == 6: #rough by eyes
                     #     pos_x_text = pos_x + 50
                     #     pos_y_text = pos_y + 30
@@ -437,7 +505,7 @@ class ExportSBML(WindowedPlugin):
                         pos_y_text = pos_y + height
                     bb_id  = "bb_spec_text_" + spec_id + '_idx_' + str(spec_index)
                     textGlyph.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x_text, pos_y_text, width, height))
-                    textGlyph.setOriginOfTextId(specG_id)
+                    #textGlyph.setOriginOfTextId(specG_id)
                     textGlyph.setGraphicalObjectId(specG_id)
 
             # create the ReactionGlyphs and SpeciesReferenceGlyphs
@@ -452,9 +520,11 @@ class ExportSBML(WindowedPlugin):
                         center_value = [centroid.x,centroid.y]
                     
                     reactionGlyph = layout.createReactionGlyph()
-                    reactionG_id = "RectionG_" + reaction_id
+                    reactionG_id = "ReactionG_" + reaction_id
                     reactionGlyph.setId(reactionG_id)
                     reactionGlyph.setReactionId(reaction_id)
+
+                    reaction_line_thickness = allReactions[i].line_thickness
                     
                     reactionCurve = reactionGlyph.getCurve()
                     ls = reactionCurve.createLineSegment()
@@ -502,7 +572,18 @@ class ExportSBML(WindowedPlugin):
                         width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
                         height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
                         
-                        cb.setStart(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+              
+                        line_end_pt = _cross_point(handle2, 
+                        [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                        [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                        if line_end_pt == None:
+                            line_end_pt = _cross_point(center_value, 
+                            [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                            [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                        try:
+                            cb.setStart(Point(layoutns, line_end_pt[0], line_end_pt[1]))
+                        except:     
+                            cb.setStart(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
                         cb.setBasePoint1(Point(layoutns, handle2.x, handle2.y))
                         cb.setBasePoint2(Point(layoutns, handle1.x, handle1.y))
                         cb.setEnd(Point(layoutns, center_value[0], center_value[1]))
@@ -533,7 +614,19 @@ class ExportSBML(WindowedPlugin):
                         pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
                         width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
                         height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
-                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+                        
+                        line_head_pt = _cross_point(handle2, 
+                        [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                        [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                        if line_head_pt == None:
+                            line_head_pt = _cross_point(center_value, 
+                            [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                            [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                    
+                        try:
+                            cb.setEnd(Point(layoutns, line_head_pt[0], line_head_pt[1]))
+                        except:
+                            cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
 
                     for j in range(mod_num):
                         ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
@@ -544,6 +637,38 @@ class ExportSBML(WindowedPlugin):
                         speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
                         speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
                         speciesReferenceGlyph.setRole(SPECIES_ROLE_MODIFIER)
+
+                        speciesReferenceCurve = speciesReferenceGlyph.getCurve()
+                        mod_ls = speciesReferenceCurve.createLineSegment()
+
+                        pos_x = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).position.x
+                        pos_y = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).position.y
+                        width = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).size.x
+                        height = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).size.y
+
+                        mod_start_virtual_x = pos_x + 0.5*width 
+                        mod_start_virtual_y = pos_y + 0.5*height
+                        try: 
+                            [mod_start_x, mod_start_y] = _cross_point(center_value, 
+                            [pos_x-reaction_line_thickness*2.,pos_y-reaction_line_thickness*2.],
+                            [width+reaction_line_thickness*4., height+reaction_line_thickness*4.]) 
+                        except: 
+                            mod_start_x = mod_start_virtual_x
+                            mod_start_y = mod_start_virtual_y
+                        mod_ls.setStart(Point(layoutns, mod_start_x, mod_start_y))
+
+    
+                        try: 
+                            [mod_end_x, mod_end_y] = _cross_point([mod_start_virtual_x, mod_start_virtual_y],
+                            [center_value[0]-5.*reaction_line_thickness, center_value[1]-5.*reaction_line_thickness], 
+                            [10.*reaction_line_thickness, 10.*reaction_line_thickness])
+                        except: 
+                            [mod_end_x, mod_end_y] = center_value
+                        try:
+                            mod_ls.setEnd(Point(layoutns, mod_end_x, mod_end_y))
+                        except:
+                            mod_ls.setEnd(Point(layoutns, center_value[0], center_value[1]))
+            
 
                 else:
                     reaction_id = allReactions[i].id
@@ -558,7 +683,7 @@ class ExportSBML(WindowedPlugin):
 
                     
                     reactionGlyph = layout.createReactionGlyph()
-                    reactionG_id = "RectionG_" + reaction_id
+                    reactionG_id = "ReactionG_" + reaction_id
                     reactionGlyph.setId(reactionG_id)
                     reactionGlyph.setReactionId(reaction_id)
                     
@@ -609,7 +734,18 @@ class ExportSBML(WindowedPlugin):
                         width = get_node_by_index(netIn,allReactions[i].sources[j]).size.x
                         height = get_node_by_index(netIn,allReactions[i].sources[j]).size.y
 
-                        cb.setStart(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+                        line_end_pt = _cross_point(handle2, 
+                        [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                        [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                        if line_end_pt == None:
+                            line_end_pt = _cross_point(center_value, 
+                            [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                            [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                        try:
+                            cb.setStart(Point(layoutns, line_end_pt[0], line_end_pt[1]))
+                        except:     
+                            cb.setStart(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+
                         cb.setBasePoint1(Point(layoutns, handle2.x, handle2.y))
                         cb.setBasePoint2(Point(layoutns, handle1.x, handle1.y))
                         cb.setEnd(Point(layoutns, center_value[0], center_value[1]))
@@ -641,7 +777,18 @@ class ExportSBML(WindowedPlugin):
                         pos_y = get_node_by_index(netIn, allReactions[i].targets[j]).position.y
                         width = get_node_by_index(netIn, allReactions[i].targets[j]).size.x
                         height = get_node_by_index(netIn, allReactions[i].targets[j]).size.y
-                        cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
+
+                        line_head_pt = _cross_point(handle2, 
+                        [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                        [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])
+                        if line_head_pt == None:
+                            line_head_pt = _cross_point(center_value, 
+                            [pos_x-reaction_line_thickness, pos_y-reaction_line_thickness], 
+                            [width+2.*reaction_line_thickness,height+2.*reaction_line_thickness])                   
+                        try:
+                            cb.setEnd(Point(layoutns, line_head_pt[0], line_head_pt[1]))
+                        except:
+                            cb.setEnd(Point(layoutns, pos_x + 0.5*width, pos_y + 0.5*height))
 
                     for j in range(mod_num):
                         ref_id = "SpecRef_" + reaction_id + "_mod" + str(j)
@@ -652,6 +799,38 @@ class ExportSBML(WindowedPlugin):
                         speciesReferenceGlyph.setSpeciesGlyphId(specG_id)
                         speciesReferenceGlyph.setSpeciesReferenceId(ref_id)
                         speciesReferenceGlyph.setRole(SPECIES_ROLE_MODIFIER)
+
+                        speciesReferenceCurve = speciesReferenceGlyph.getCurve()
+                        mod_ls = speciesReferenceCurve.createLineSegment()
+
+                        pos_x = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).position.x
+                        pos_y = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).position.y
+                        width = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).size.x
+                        height = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).size.y
+
+                        mod_start_virtual_x = pos_x + 0.5*width 
+                        mod_start_virtual_y = pos_y + 0.5*height
+                        try: 
+                            [mod_start_x, mod_start_y] = _cross_point(center_value, 
+                            [pos_x-reaction_line_thickness*2.,pos_y-reaction_line_thickness*2.],
+                            [width+reaction_line_thickness*4., height+reaction_line_thickness*4.]) 
+                        except: 
+                            mod_start_x = mod_start_virtual_x
+                            mod_start_y = mod_start_virtual_y
+                        mod_ls.setStart(Point(layoutns, mod_start_x, mod_start_y))
+
+    
+                        try: 
+                            [mod_end_x, mod_end_y] = _cross_point([mod_start_virtual_x, mod_start_virtual_y],
+                            [center_value[0]-5.*reaction_line_thickness, center_value[1]-5.*reaction_line_thickness], 
+                            [10.*reaction_line_thickness, 10.*reaction_line_thickness])
+                        except: 
+                            [mod_end_x, mod_end_y] = center_value
+                        try:
+                            mod_ls.setEnd(Point(layoutns, mod_end_x, mod_end_y))
+                        except:
+                            mod_ls.setEnd(Point(layoutns, center_value[0], center_value[1]))
+            
 
             sbmlStr_layout = writeSBMLToString(document) #sbmlStr is w/o layout info 
 
@@ -678,10 +857,16 @@ class ExportSBML(WindowedPlugin):
             rInfo.setProgramName("RenderInformation")
             rInfo.setProgramVersion("1.0")
 
+            default_modifier_color_str = '#%02x%02x%02x%02x' % (208,134,249, 255)
+            color = rInfo.createColorDefinition()
+            color.setId("_default_modifier_color_")
+            color.setColorValue(default_modifier_color_str)
+
 
             if numCompartments != 0:  
                 for i in range(len(allcompartments)):
                     comp_id = allcompartments[i].id
+                    compG_id = "CompG_" + comp_id
                     if comp_id != '_compartment_default':
                         fill_color        = allcompartments[i].fill_color
                         border_color      = allcompartments[i].border_color
@@ -703,11 +888,14 @@ class ExportSBML(WindowedPlugin):
                         style.getGroup().setStroke("comp_border_color" + "_" + comp_id)
                         style.getGroup().setStrokeWidth(comp_border_width)
                         style.addType("COMPARTMENTGLYPH")
-                        style.addId(comp_id)
+                        style.addId(compG_id)
+                        #style.addId(comp_id)
                         rectangle = style.getGroup().createRectangle()
                         rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
 
             else:
+                comp_id = '_compartment_default'
+                compG_id = "CompG_" + comp_id
                 comp_border_width = 2.
                 #set default compartment with white color
                 fill_color_str = '#ffffffff'
@@ -727,13 +915,18 @@ class ExportSBML(WindowedPlugin):
                 style.getGroup().setStroke("comp_border_color")
                 style.getGroup().setStrokeWidth(comp_border_width)
                 style.addType("COMPARTMENTGLYPH")
-                style.addId(comp_id)
+                style.addId(compG_id)
+                #style.addId(comp_id)
                 rectangle = style.getGroup().createRectangle()
                 rectangle.setCoordinatesAndSize(RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,0),RelAbsVector(0,100),RelAbsVector(0,100))
 
             for i in range(len(allNodes)):
                 node =  allNodes[i]
                 spec_id = node.id
+                spec_index = node.index
+                specG_id = "SpecG_"  + spec_id + '_idx_' + str(spec_index)
+                #print("id:", spec_id)
+                #print("shape_index", node.shape)
                 try: 
                     primitive, _ = node.shape.items[0]
                     spec_fill_color   = primitive.fill_color
@@ -750,8 +943,12 @@ class ExportSBML(WindowedPlugin):
                     spec_fill_color_str = '#ffffffff'
                     spec_border_color_str = '#ffffffff'
                     spec_border_width = 2.
-                    text_font_size = 11
                     text_line_color_str = '#000000ff'
+                    text_line_width = 1.
+                    text_font_size = 12.
+                    text_font_family = ""
+                    [text_anchor, text_vanchor] = ['middle', 'middle']
+
 
 
                 color = rInfo.createColorDefinition()
@@ -771,11 +968,12 @@ class ExportSBML(WindowedPlugin):
                 style.getGroup().setStroke("spec_border_color" + "_" + spec_id)
                 style.getGroup().setStrokeWidth(spec_border_width)
                 style.addType("SPECIESGLYPH")
-                style.addId(spec_id)
+                style.addId(specG_id)
+                #style.addId(spec_id)
                 if node.shape_index == 1 or node.shape_index == 6: #ellipse/text-outside
                     ellipse = style.getGroup().createEllipse()
                     ellipse.setCenter2D(RelAbsVector(0, 50), RelAbsVector(0, 50))
-                    ellipse.setRadii(RelAbsVector(0, 100), RelAbsVector(0, 100))
+                    ellipse.setRadii(RelAbsVector(0, 50), RelAbsVector(0, 50))
                 
                 elif node.shape_index == 2: #hexagon(6)
                     polygon = style.getGroup().createPolygon()
@@ -813,16 +1011,19 @@ class ExportSBML(WindowedPlugin):
                 style.getGroup().setStroke("text_line_color" + "_" + spec_id)
                 style.getGroup().setStrokeWidth(1.)
                 style.getGroup().setFontSize(RelAbsVector(text_font_size,0))
+                style.getGroup().setTextAnchor('middle')
+                style.getGroup().setVTextAnchor('middle')
                 style.addType("TEXTGLYPH")
-                style.addId(spec_id)
+                style.addId(textG_id)
+
 
             if numReactions != 0:
                 for i in range(len(allReactions)):
                     rxn_id = allReactions[i].id
+                    reactionG_id = "ReactionG_" + rxn_id
                     reaction_fill_color     = allReactions[i].fill_color
                     reaction_fill_color_str = '#%02x%02x%02x%02x' % (reaction_fill_color.r,reaction_fill_color.g,reaction_fill_color.b,reaction_fill_color.a)           
                     reaction_line_thickness = allReactions[i].line_thickness
-                    reaction_id = allReactions[i].id
 
                     color = rInfo.createColorDefinition()
                     color.setId("reaction_fill_color" + "_" + rxn_id)
@@ -831,8 +1032,130 @@ class ExportSBML(WindowedPlugin):
                     style = rInfo.createStyle("reactionStyle" + "_" + rxn_id)
                     style.getGroup().setStroke("reaction_fill_color" + "_" + rxn_id)
                     style.getGroup().setStrokeWidth(reaction_line_thickness)
-                    style.addType("REACTIONGLYPH SPECIESREFERENCEGLYPH")
-                    style.addId(reaction_id)
+                    style.addType("REACTIONGLYPH")
+                    style.addId(reactionG_id)
+                    #style.addId(reaction_id)
+
+                    rct_num = len(allReactions[i].sources)
+                    prd_num = len(allReactions[i].targets)
+                    mod_num = len(allReactions[i].modifiers)
+
+                    lineEnding = rInfo.createLineEnding()
+                    lineEnding_id = '_line_ending_default_NONE_' + rxn_id
+                    lineEnding.setId(lineEnding_id)
+                    bb_id = "bb_" + lineEnding_id
+                    [pos_x, pos_y] = [0., 0.]
+                    [width, height] = [0., 0.]
+                    lineEnding.setEnableRotationalMapping(True)
+                    lineEnding.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x, pos_y, width, height))
+
+                    fill_color_str = reaction_fill_color_str
+                    color = rInfo.createColorDefinition()
+                    color.setId("lineEnding_fill_color" + "_" + lineEnding_id)
+                    color.setColorValue(fill_color_str)
+                    lineEnding.getGroup().setFill('lineEnding_fill_color' + '_' + lineEnding_id)
+            
+                    border_color_str = reaction_fill_color_str
+                    color = rInfo.createColorDefinition()
+                    color.setId("lineEnding_border_color" + "_" + lineEnding_id)
+                    color.setColorValue(border_color_str)
+                    lineEnding.getGroup().setStroke('lineEnding_border_color' + '_' + lineEnding_id)
+
+
+                    for j in range(rct_num):
+                        specsRefG_id = "SpecRefG_" + rxn_id + "_rct" + str(j)
+                        style = rInfo.createStyle("specRefGlyphStyle" + rxn_id + "_rct" + str(j))
+                        style.getGroup().setEndHead('_line_ending_default_NONE_')
+                        style.getGroup().setStroke("lineEnding_border_color" + "_" + lineEnding_id)
+                        style.getGroup().setFill("lineEnding_fill_color" + "_" + lineEnding_id)
+                        style.getGroup().setStrokeWidth(reaction_line_thickness)
+                        style.addType('SPECIESREFERENCEGLYPH')
+                        style.addId(specsRefG_id)
+                    
+                    ##
+                    lineEnding = rInfo.createLineEnding()
+                    lineEnding_id = 'line_ending_' + rxn_id
+                    lineEnding.setId(lineEnding_id)
+
+                    bb_id = "bb_" + lineEnding_id
+                    reaction_arrow_head_size = [reaction_line_thickness*5, reaction_line_thickness*4]
+                    [pos_x, pos_y] = [-reaction_arrow_head_size[0], -0.5*reaction_arrow_head_size[1]]
+                    [width, height] = reaction_arrow_head_size
+
+                    lineEnding.setEnableRotationalMapping(True)
+                    lineEnding.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x, pos_y, width, height))
+
+                    fill_color_str = reaction_fill_color_str
+                    color = rInfo.createColorDefinition()
+                    color.setId("lineEnding_fill_color" + "_" + lineEnding_id)
+                    color.setColorValue(fill_color_str)
+                    lineEnding.getGroup().setFill('lineEnding_fill_color' + '_' + lineEnding_id)
+            
+                    border_color_str = reaction_fill_color_str
+                    color = rInfo.createColorDefinition()
+                    color.setId("lineEnding_border_color" + "_" + lineEnding_id)
+                    color.setColorValue(border_color_str)
+                    lineEnding.getGroup().setStroke('lineEnding_border_color' + '_' + lineEnding_id)
+
+                    polygon = lineEnding.getGroup().createPolygon()
+                    shape_info_list = [[0.,0.], [100.,50.], [0.,100.], [0.,0.]]
+                    for k in range(len(shape_info_list)):
+                        x = shape_info_list[k][0]
+                        y = shape_info_list[k][1]                           
+                        renderPoint = polygon.createPoint()
+                        renderPoint.setCoordinates(RelAbsVector(0,x), RelAbsVector(0,y))
+
+                    for j in range(prd_num):
+                        specsRefG_id = "SpecRefG_" + rxn_id + "_prd" + str(j)
+                        style = rInfo.createStyle("specRefGlyphStyle" + rxn_id + "_prd" + str(j))
+                        style.getGroup().setEndHead(lineEnding_id)
+                        style.getGroup().setStroke("lineEnding_border_color" + "_" + lineEnding_id)
+                        style.getGroup().setFill("lineEnding_fill_color" + "_" + lineEnding_id)
+                        style.getGroup().setStrokeWidth(reaction_line_thickness)
+                        style.addType('SPECIESREFERENCEGLYPH')
+                        style.addId(specsRefG_id)
+
+                    ##
+                    lineEnding = rInfo.createLineEnding()
+                    lineEnding_mod_id = 'line_ending_modifier_' + rxn_id
+                    lineEnding.setId(lineEnding_mod_id)
+
+                    bb_id = "bb_" + lineEnding_mod_id
+                    [pos_x, pos_y] = [-1.*reaction_line_thickness, 0.]
+                    [width, height] = [2*reaction_line_thickness, 2*reaction_line_thickness]
+
+                    lineEnding.setEnableRotationalMapping(True)
+                    lineEnding.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x, pos_y, width, height))
+
+                    fill_color_str = reaction_fill_color_str
+                    color = rInfo.createColorDefinition()
+                    color.setId("lineEnding_fill_color" + "_" + lineEnding_mod_id)
+                    color.setColorValue(fill_color_str)
+                    #lineEnding.getGroup().setFill('lineEnding_fill_color' + '_' + lineEnding_mod_id)
+                    lineEnding.getGroup().setFill("_default_modifier_color_")
+
+                    border_color_str = reaction_fill_color_str
+                    color = rInfo.createColorDefinition()
+                    color.setId("lineEnding_border_color" + "_" + lineEnding_mod_id)
+                    color.setColorValue(border_color_str)
+                    #lineEnding.getGroup().setStroke('lineEnding_border_color' + '_' + lineEnding_mod_id)
+                    lineEnding.getGroup().setStroke("_default_modifier_color_")
+
+                    ellipse = lineEnding.getGroup().createEllipse()
+                    ellipse.setCenter2D(RelAbsVector(0, 0.), RelAbsVector(0, 0.))
+                    ellipse.setRadii(RelAbsVector(0, 100.), RelAbsVector(0, 100.))
+
+                    for j in range(mod_num):
+                        specsRefG_id = "SpecRefG_" + rxn_id + "_mod" + str(j)
+                        style = rInfo.createStyle("specRefGlyphStyle" + rxn_id + "_mod" + str(j))
+                        style.getGroup().setEndHead(lineEnding_mod_id)
+                        #style.getGroup().setStroke("reaction_fill_color" + "_" + rxn_id)
+                        #style.getGroup().setFill("lineEnding_fill_color" + "_" + lineEnding_mod_id)
+                        style.getGroup().setStroke("_default_modifier_color_")
+                        style.getGroup().setFill("_default_modifier_color_")
+                        style.getGroup().setStrokeWidth(reaction_line_thickness)
+                        style.addType('SPECIESREFERENCEGLYPH')
+                        style.addId(specsRefG_id)
             
             sbmlStr_layout_render = writeSBMLToString(doc)
             return sbmlStr_layout_render
