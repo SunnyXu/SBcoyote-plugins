@@ -128,21 +128,39 @@ class ExportAntimony(WindowedPlugin):
                 rct_num = len(allReactions[i].sources)
                 prd_num = len(allReactions[i].targets)
                 for j in range(rct_num-1):
-                    antStr = antStr + allNodes[allReactions[i].sources[j]].id
+                    temp_spec_id = allNodes[allReactions[i].sources[j]].id
+                    if ' ' in temp_spec_id:
+                        temp_spec_id = temp_spec_id.replace(' ', '_')
+                    antStr = antStr + temp_spec_id
                     antStr = antStr + ' + '
-                antStr = antStr + allNodes[allReactions[i].sources[rct_num-1]].id
+                temp_spec_id = allNodes[allReactions[i].sources[rct_num-1]].id
+                if ' ' in temp_spec_id:
+                    temp_spec_id = temp_spec_id.replace(' ', '_')
+                antStr = antStr + temp_spec_id
                 antStr = antStr + ' -> '
                 for j in range(prd_num-1):
-                    antStr = antStr + allNodes[allReactions[i].targets[j]].id
+                    temp_spec_id = allNodes[allReactions[i].targets[j]].id
+                    if ' ' in temp_spec_id:
+                        temp_spec_id = temp_spec_id.replace(' ', '_')
+                    antStr = antStr + temp_spec_id
                     antStr = antStr + ' + '
-                antStr = antStr + allNodes[allReactions[i].targets[prd_num-1]].id
+                temp_spec_id = allNodes[allReactions[i].targets[prd_num-1]].id
+                if ' ' in temp_spec_id:
+                    temp_spec_id = temp_spec_id.replace(' ', '_')
+                antStr = antStr + temp_spec_id
                 antStr = antStr + '; E' + str (i) + '*(k' + str (i) 
                 for j in range(rct_num):
-                    antStr = antStr + '*' + allNodes[allReactions[i].sources[j]].id
+                    temp_spec_id = allNodes[allReactions[i].sources[j]].id
+                    if ' ' in temp_spec_id:
+                        temp_spec_id = temp_spec_id.replace(' ', '_')
+                    antStr = antStr + '*' + temp_spec_id
                 if isReversible:
                     antStr = antStr + ' - k' + str (i) + 'r'
                     for j in range(prd_num):
-                        antStr = antStr + '*' + allNodes[allReactions[i].targets[j]].id
+                        temp_spec_id = allNodes[allReactions[i].targets[j]].id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        antStr = antStr + '*' + temp_spec_id
                 antStr = antStr + ')'
                 antStr = antStr + ';\n'
             self.antimonyText.SetValue(antStr)

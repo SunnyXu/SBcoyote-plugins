@@ -1,6 +1,6 @@
 """
 Export the network on canvas to an SBML string as save it as a file.
-Version 1.0.0: Author: Jin Xu (2021)
+Version 1.0.1: Author: Jin Xu (2021)
 """
 
 
@@ -20,7 +20,7 @@ class ExportSBML(WindowedPlugin):
     metadata = PluginMetadata(
         name='ExportSBML',
         author='Jin Xu',
-        version='1.0.0',
+        version='1.0.1',
         short_desc='Export SBML.',
         long_desc='Export the SBML String from the network on canvas and save it to a file.',
         category=PluginCategory.ANALYSIS
@@ -237,6 +237,8 @@ class ExportSBML(WindowedPlugin):
                     original_index = allNodes[i].original_index
                     if original_index == -1:
                         spec_id = allNodes[i].id
+                        if ' ' in spec_id:
+                            spec_id = spec_id.replace(' ', '_')
                         if spec_id not in spec_id_list:
                             spec_id_list.append(spec_id)
                         species = model.createSpecies()
@@ -264,6 +266,8 @@ class ExportSBML(WindowedPlugin):
                     original_index = allNodes[i].original_index
                     if original_index == -1:
                         spec_id = allNodes[i].id
+                        if ' ' in spec_id:
+                            spec_id = spec_id.replace(' ', '_')
                         if spec_id not in spec_id_list:
                             spec_id_list.append(spec_id)
                         species = model.createSpecies()
@@ -288,11 +292,20 @@ class ExportSBML(WindowedPlugin):
                 prd_num = len(allReactions[i].targets)
                 mod_num = len(allReactions[i].modifiers)
                 for j in range(rct_num):
-                    rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
+                    temp_spec_id = get_node_by_index(netIn, allReactions[i].sources[j]).id
+                    if ' ' in temp_spec_id:
+                        temp_spec_id = temp_spec_id.replace(' ', '_')
+                    rct.append(temp_spec_id)
                 for j in range(prd_num):
-                    prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                    temp_spec_id = get_node_by_index(netIn, allReactions[i].targets[j]).id
+                    if ' ' in temp_spec_id:
+                        temp_spec_id = temp_spec_id.replace(' ', '_')
+                    prd.append(temp_spec_id)
                 for j in range(mod_num):
-                    mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                    temp_spec_id = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id
+                    if ' ' in temp_spec_id:
+                        temp_spec_id = temp_spec_id.replace(' ', '_')
+                    mod.append(temp_spec_id)
 
                 kinetic_law_from_user = allReactions[i].rate_law
                 
@@ -412,6 +425,8 @@ class ExportSBML(WindowedPlugin):
                         compartmentGlyph.setBoundingBox(BoundingBox(layoutns, bb_id, pos_x, pos_y, width, height))
                 for i in range(numNodes):   
                     spec_id = allNodes[i].id
+                    if ' ' in spec_id:
+                        spec_id = spec_id.replace(' ', '_')
                     spec_index = allNodes[i].index
                     # spec_shapeIdx = allNodes[i].shape_index
                     primitive, _ = allNodes[i].shape.text_item
@@ -467,6 +482,8 @@ class ExportSBML(WindowedPlugin):
             
                 for i in range(numNodes):
                     spec_id = allNodes[i].id
+                    if ' ' in spec_id:
+                        spec_id = spec_id.replace(' ', '_')
                     spec_index = allNodes[i].index
                     #spec_shapeIdx = allNodes[i].shape_index
                     primitive, _ = allNodes[i].shape.text_item
@@ -542,14 +559,25 @@ class ExportSBML(WindowedPlugin):
                     mod_num = len(allReactions[i].modifiers)
 
                     for j in range(rct_num):
-                        rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
+                        temp_spec_id = get_node_by_index(netIn, allReactions[i].sources[j]).id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        rct.append(temp_spec_id)
                         rct_index.append(get_node_by_index(netIn, allReactions[i].sources[j]).index)
                     for j in range(prd_num):
-                        prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                        temp_spec_id = get_node_by_index(netIn, allReactions[i].targets[j]).id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        prd.append(temp_spec_id)
                         prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
                     for j in range(mod_num):
-                        mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                        temp_spec_id = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        mod.append(temp_spec_id)
                         mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
+
+                    
                     for j in range(rct_num):
                         ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
 
@@ -702,15 +730,36 @@ class ExportSBML(WindowedPlugin):
                     prd_num = len(allReactions[i].targets)
                     mod_num = len(allReactions[i].modifiers)
 
+                    # for j in range(rct_num):
+                    #     rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
+                    #     rct_index.append(get_node_by_index(netIn, allReactions[i].sources[j]).index)
+                    # for j in range(prd_num):
+                    #     prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                    #     prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
+                    # for j in range(mod_num):
+                    #     mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                    #     mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
+                    
                     for j in range(rct_num):
-                        rct.append(get_node_by_index(netIn, allReactions[i].sources[j]).id)
+                        temp_spec_id = get_node_by_index(netIn, allReactions[i].sources[j]).id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        rct.append(temp_spec_id)
                         rct_index.append(get_node_by_index(netIn, allReactions[i].sources[j]).index)
                     for j in range(prd_num):
-                        prd.append(get_node_by_index(netIn, allReactions[i].targets[j]).id)
+                        temp_spec_id = get_node_by_index(netIn, allReactions[i].targets[j]).id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        prd.append(temp_spec_id)
                         prd_index.append(get_node_by_index(netIn, allReactions[i].targets[j]).index)
                     for j in range(mod_num):
-                        mod.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id)
+                        temp_spec_id = get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).id
+                        if ' ' in temp_spec_id:
+                            temp_spec_id = temp_spec_id.replace(' ', '_')
+                        mod.append(temp_spec_id)
                         mod_index.append(get_node_by_index(netIn, list(allReactions[i].modifiers)[j]).index)
+
+
                     for j in range(rct_num):
                         ref_id = "SpecRef_" + reaction_id + "_rct" + str(j)
 
@@ -923,6 +972,8 @@ class ExportSBML(WindowedPlugin):
             for i in range(len(allNodes)):
                 node =  allNodes[i]
                 spec_id = node.id
+                if ' ' in spec_id:
+                    spec_id = spec_id.replace(' ', '_')
                 spec_index = node.index
                 specG_id = "SpecG_"  + spec_id + '_idx_' + str(spec_index)
                 textG_id = "TextG_" + spec_id + '_idx_' + str(spec_index)
